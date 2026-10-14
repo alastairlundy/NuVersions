@@ -2,8 +2,16 @@
   <PropertyGroup>
     <!-- Enable central package management, https://learn.microsoft.com/en-us/nuget/consume-packages/Central-Package-Management -->
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <!--
+      Test projects restore the same transitive graph as src/ (NuGet.Protocol -> NuGet.Packaging
+      -> System.Security.Cryptography.Pkcs 8.0.1, flagged by the NuGet audit), and the nearest
+      Directory.Packages.props wins per project, so the pin must be declared here too.
+      See src/Directory.Packages.props for details.
+    -->
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
   <ItemGroup>
+    <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="8.0.2" />
     <PackageVersion Include="TUnit" Version="1.73.5" />
     <PackageVersion Include="TUnit.FsCheck" Version="1.73.5" />
     <PackageVersion Include="FsCheck" Version="3.4.0" />
