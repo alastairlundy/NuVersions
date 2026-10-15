@@ -16,10 +16,10 @@ updates:
   #
   # "src" contains the solution that references every project in the repository,
   # so it acts as a single entry point covering all of them:
-  #   src/PreRelease Delist.slnx
-  #     -> src/PreReleaseDelistLib/PreReleaseDelistLib.csproj
-  #     -> src/PreReleaseDelistCli/PreReleaseDelistCli.csproj
-  #     -> tests/PreReleaseDelistLib.FuzzTests/PreReleaseDelistLib.FuzzTests.csproj
+  #   src/NuVersions.slnx
+  #     -> src/NuVersionsLib/NuVersionsLib.csproj
+  #     -> src/NuVersionsCli/NuVersionsCli.csproj
+  #     -> tests/NuVersionsLib.FuzzTests/NuVersionsLib.FuzzTests.csproj
   #
   # Versions are managed centrally, and Dependabot updates them in place. MSBuild
   # resolves the nearest Directory.Packages.props by walking up from each project,

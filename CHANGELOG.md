@@ -4,6 +4,35 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.3.0 - Unreleased
+
+### Added
+
+- The `nuversions show` subcommand: a pure read that prints every version of a package — stable
+  and pre-release, listed and unlisted — with one `Status=listed|unlisted` line per version.
+  It sends no delete request and needs no API key. With `--output json`, same one-object-per-line
+  NDJSON schema as `unlist`; a missing package exits `2`.
+- A renamed project. The package `PreReleaseDelist` and its `prerelease-delist` command are now
+  `NuVersions` and `nuversions`, and the single command is now a hierarchy: `nuversions unlist`
+  (today's delist behavior) and `nuversions show`. The old package ID will be deprecated on
+  NuGet.org pointing at the new one.
+
+### Changed
+
+- The unlist status vocabulary now matches nuget.org's own wording: the outcome formerly rendered
+  `delisted`/`already-delisted` is `unlisted`/`already-unlisted`, and dry-run buckets render
+  `would-unlist`. Everything about the run is otherwise identical: same statuses for
+  `not-on-server`, `failed`, `rate-limited`, `not-attempted`, same exit codes, same NDJSON shape.
+- The environment-variable fallback prefix is `NUVERSIONS_` (was `PRERELEASEDELIST_`); the
+  generic `NUGET_API_KEY`/`NUGET_SERVER_URL` fallbacks are unchanged.
+- The library's outcome enum members follow the same rename (`PackageVersionStatus.Unlisted`,
+  `PackageVersionStatus.AlreadyUnlisted`); the assembly is not published on NuGet, so no external
+  consumer impact is expected.
+
+### Removed
+
+- The `prerelease-delist` command name and the `PreReleaseDelist` package ID.
+
 ## 0.2.0 - 2026-10-15
 
 ### Added

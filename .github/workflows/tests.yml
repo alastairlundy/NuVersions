@@ -29,10 +29,10 @@ jobs:
           dotnet-version: 10.0.x
 
       - name: Restore
-        run: dotnet restore "src/PreRelease DeList.slnx"
+        run: dotnet restore "src/NuVersions.slnx"
 
       - name: Build
-        run: dotnet build -c Release --no-restore "src/PreRelease DeList.slnx"
+        run: dotnet build -c Release --no-restore "src/NuVersions.slnx"
 
       - name: Run fuzz tests
-        run: dotnet test tests/PreReleaseDelistLib.FuzzTests --no-build -c Release
+        run: dotnet test tests/NuVersionsLib.FuzzTests --no-build -c Release

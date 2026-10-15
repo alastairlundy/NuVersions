@@ -2,7 +2,7 @@
 title: Glossary sync verification
 classification: Independent
 blocked_by: []
-parent: IMPLEMENTATION-prerelease-delist-1.0-readiness.md
+parent: IMPLEMENTATION-nuversions-1.0-readiness.md
 ---
 
 # TK016 — Glossary sync verification
@@ -19,7 +19,7 @@ A verification-only pass (no file changes expected): confirm `GLOSSARY.md` carri
 
 ### Step 1 - Compare glossary against the ledger record
 
-Where: `GLOSSARY.md`, `docs/decisions/DECISIONS-prerelease-delist-1.0-readiness.md`
+Where: `GLOSSARY.md`, `docs/decisions/DECISIONS-nuversions-1.0-readiness.md`
 
 - Read the D003 record and the six glossary entries; compare definitions term by term.
 - Check the terms are implementation-free (no code identifiers in the definitions).
@@ -42,10 +42,10 @@ All six glossary terms are the subject of this ticket - no additional terms need
 
 ##### Ledger records
 
-- `DECISIONS-prerelease-delist-1.0-readiness.md#D003` - the glossary terms this ticket verifies against the file.
-- `DECISIONS-prerelease-delist-1.0-readiness.md#T004` - the outcome vocabulary whose wording D003 pins to the glossary.
-- `DECISIONS-prerelease-delist-1.0-readiness.md#T003` - the dry-run contract wording pinned to the glossary.
-- `DECISIONS-prerelease-delist-1.0-readiness.md#T001` - the seam decision that made the original "Delete backend" aspiration literal.
+- `DECISIONS-nuversions-1.0-readiness.md#D003` - the glossary terms this ticket verifies against the file.
+- `DECISIONS-nuversions-1.0-readiness.md#T004` - the outcome vocabulary whose wording D003 pins to the glossary.
+- `DECISIONS-nuversions-1.0-readiness.md#T003` - the dry-run contract wording pinned to the glossary.
+- `DECISIONS-nuversions-1.0-readiness.md#T001` - the seam decision that made the original "Delete backend" aspiration literal.
 
 ## Acceptance criteria
 

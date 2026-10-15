@@ -10,17 +10,17 @@ Verified commands:
 
 ```bash
 # simplest full run
-dotnet test tests/PreReleaseDelistLib.FuzzTests
+dotnet test tests/NuVersionsLib.FuzzTests
 
 # exact .github/workflows/tests.yml sequence (build the solution first)
-dotnet build -c Release "src/PreRelease DeList.slnx"
-dotnet test tests/PreReleaseDelistLib.FuzzTests --no-build -c Release
+dotnet build -c Release "src/NuVersions.slnx"
+dotnet test tests/NuVersionsLib.FuzzTests --no-build -c Release
 
 # exact .github/workflows/publish.yml gate (runs before restore/pack/push)
-dotnet test "src/PreRelease DeList.slnx" -c Release
+dotnet test "src/NuVersions.slnx" -c Release
 
 # class-scoped run (TUnit treenode filter; native mode takes MTP options directly, no -- separator)
-dotnet test tests/PreReleaseDelistLib.FuzzTests --treenode-filter "/*/*/VersionFilterProperties/*"
+dotnet test tests/NuVersionsLib.FuzzTests --treenode-filter "/*/*/VersionFilterProperties/*"
 ```
 
 `dotnet test --help` lists everything the wrapper consumes in this mode. Any other
@@ -43,5 +43,5 @@ before suspecting the tests themselves. The reference behaviour is running the b
 module directly, which prints the real error:
 
 ```bash
-dotnet tests/PreReleaseDelistLib.FuzzTests/bin/Debug/net10.0/PreReleaseDelistLib.FuzzTests.dll
+dotnet tests/NuVersionsLib.FuzzTests/bin/Debug/net10.0/NuVersionsLib.FuzzTests.dll
 ```

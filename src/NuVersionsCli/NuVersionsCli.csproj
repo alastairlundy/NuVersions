@@ -1,0 +1,75 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <!-- LangVersion, Nullable and ImplicitUsings come from Directory.Build.props. -->
+        <PackAsTool>true</PackAsTool>
+        <ToolCommandName>nuversions</ToolCommandName>
+        <RollForward>Major</RollForward>
+        <AssemblyName>nuversions</AssemblyName>
+        <Title>NuVersions</Title>
+        <Authors>Alastair Lundy</Authors>
+        <Copyright>Copyright (c) Alastair Lundy 2026</Copyright>
+        <RepositoryUrl>https://github.com/alastairlundy/NuVersions</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <PackageTags>delist;nuget;dotnet-tool;cli;unlist</PackageTags>
+        <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
+        <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+        <PackageId>NuVersions</PackageId>
+        <Description>De-list NuGet package versions programatically with ease.</Description>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageReleaseNotes>See the README and CHANGELOG.md.
+
+## Changes since 0.2.0
+
+### Added
+- Renamed from `PreReleaseDelist` / `prerelease-delist`: the tool is now `NuVersions` / `nuversions`,
+  with the previous behavior available as `nuversions unlist` and a new read-only sibling
+  `nuversions show` that reports whether each version of a package is listed or unlisted.
+- The unlist status vocabulary now matches nuget.org terminology: `unlisted` / `already-unlisted`
+  (was `delisted` / `already-delisted`), with the same exit-code contract.
+- The environment-variable fallback prefix is now `NUVERSIONS_`; the generic `NUGET_*` names stay.</PackageReleaseNotes>
+        <TargetFramework>net10.0</TargetFramework>
+        <Version>0.3.0</Version>
+        <PackageVersion>0.3.0</PackageVersion>
+        <AssemblyVersion>0.3.0.0</AssemblyVersion>
+        <FileVersion>0.3.0.0</FileVersion>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <InternalsVisibleTo Include="NuVersionsLib.FuzzTests" />
+      <InternalsVisibleTo Include="NuVersionsLib.Tests" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="CliInvoke" />
+      <PackageReference Include="DotMake.CommandLine"/>
+      <PackageReference Include="Microsoft.Extensions.Configuration"/>
+      <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables"/>
+      <PackageReference Include="Microsoft.Extensions.DependencyInjection"/>
+    </ItemGroup>
+    
+    <ItemGroup>
+      <ProjectReference Include="..\NuVersionsLib\NuVersionsLib.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <EmbeddedResource Update="Localizations\Resources.resx">
+        <Generator>ResXFileCodeGenerator</Generator>
+        <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+      </EmbeddedResource>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Compile Update="Localizations\Resources.Designer.cs">
+        <DesignTime>True</DesignTime>
+        <AutoGen>True</AutoGen>
+        <DependentUpon>Resources.resx</DependentUpon>
+      </Compile>
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    </ItemGroup>
+
+</Project>

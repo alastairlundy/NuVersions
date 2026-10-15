@@ -36,19 +36,19 @@ jobs:
       # exercises both the fuzz suite and the dedicated unit/integration test
       # project (Tests).
       - name: Test
-        run: dotnet test "src/PreRelease DeList.slnx" -c Release
+        run: dotnet test "src/NuVersions.slnx" -c Release
 
       # Restore also runs the NuGet audit against the unlocked dependency
       # graph (NuGetAudit=true, NuGetAuditMode=all in Directory.Build.props);
       # any reported vulnerability fails the job here. No lockfile is used.
       - name: Restore
-        run: dotnet restore "src/PreRelease DeList.slnx"
+        run: dotnet restore "src/NuVersions.slnx"
 
       - name: Build
-        run: dotnet build -c Release --no-restore "src/PreRelease DeList.slnx"
+        run: dotnet build -c Release --no-restore "src/NuVersions.slnx"
 
       - name: Pack
-        run: dotnet pack src/PreReleaseDelistCli/PreReleaseDelistCli.csproj -c Release --no-build
+        run: dotnet pack src/NuVersionsCli/NuVersionsCli.csproj -c Release --no-build
 
       # Get a short-lived NuGet API key
       - name: NuGet login (OIDC → temp API key)
@@ -58,7 +58,7 @@ jobs:
               user: ${{ secrets.NUGET_USER }}
 
       - name: Push to NuGet.org with trusted publishing
-        run: dotnet nuget push "src/PreReleaseDelistCli/bin/Release/*.nupkg" --api-key ${{steps.login.outputs.NUGET_API_KEY}} --source https://api.nuget.org/v3/index.json --skip-duplicate
+        run: dotnet nuget push "src/NuVersionsCli/bin/Release/*.nupkg" --api-key ${{steps.login.outputs.NUGET_API_KEY}} --source https://api.nuget.org/v3/index.json --skip-duplicate
 
   # Test gate for the RID asset channel. The publish job above keeps the
   # inline test step for the NuGet channel; this job exists against its own
@@ -87,7 +87,7 @@ jobs:
           dotnet-version: 10.0.x
 
       - name: Test
-        run: dotnet test "src/PreRelease DeList.slnx" -c Release
+        run: dotnet test "src/NuVersions.slnx" -c Release
 
   build-assets:
     name: Build ${{ matrix.rid }} asset
@@ -134,7 +134,7 @@ jobs:
       # flags anywhere (D002); adding one would be a decision reversal.
       - name: Publish (self-contained, single file)
         run: >
-          dotnet publish src/PreReleaseDelistCli/PreReleaseDelistCli.csproj
+          dotnet publish src/NuVersionsCli/NuVersionsCli.csproj
           -c Release --self-contained true -p:PublishSingleFile=true
           -r ${{ matrix.rid }} -o publish/${{ matrix.rid }}
 
@@ -143,7 +143,7 @@ jobs:
           set -euo pipefail
           shopt -s dotglob
           mkdir -p dist
-          zip -9 -r -j "dist/prerelease-delist-${{ matrix.rid }}.zip" "publish/${{ matrix.rid }}"/*
+          zip -9 -r -j "dist/nuversions-${{ matrix.rid }}.zip" "publish/${{ matrix.rid }}"/*
 
       # GitHub publishes no checksums, so the workflow computes them (T019):
       # one `.sha256` file per artifact, written from inside the directory so
@@ -154,8 +154,8 @@ jobs:
         run: |
           set -euo pipefail
           cd dist
-          sha256sum "prerelease-delist-${{ matrix.rid }}.zip" > "prerelease-delist-${{ matrix.rid }}.zip.sha256"
-          sha256sum -c "prerelease-delist-${{ matrix.rid }}.zip.sha256"
+          sha256sum "nuversions-${{ matrix.rid }}.zip" > "nuversions-${{ matrix.rid }}.zip.sha256"
+          sha256sum -c "nuversions-${{ matrix.rid }}.zip.sha256"
 
       - name: Upload the zip and its checksum
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="NuVersionsCli/NuVersionsCli.csproj" />
+  <Project Path="NuVersionsLib/NuVersionsLib.csproj" />
+  <Project Path="../tests/NuVersionsLib.FuzzTests/NuVersionsLib.FuzzTests.csproj" />
+  <Project Path="../tests/NuVersionsLib.Tests/NuVersionsLib.Tests.csproj" />
+</Solution>

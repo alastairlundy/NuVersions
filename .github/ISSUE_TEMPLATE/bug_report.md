@@ -26,7 +26,7 @@ If applicable, add screenshots to help explain your problem.
 **Computer (please complete the following information):**
  - OS: [e.g. Windows, macOS, ]
  - OS Version: 10.0.26200, 26.0
- - prerelease-delist Version [e.g. 1.0.0]
+ - nuversions Version [e.g. 1.0.0]
  - .NET Runtime Version [e.g. 10.0.2]
 
 **Additional context**
