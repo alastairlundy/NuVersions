@@ -27,6 +27,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   API key reaches the wire but neither stream.
 
 ### Changed
+- Updated CliInvoke to 3.0.3 (3.0.0 is affected by
+  [GHSA-h4rx-7jm8-fr3g](https://github.com/alastairlundy/CliInvoke/security/advisories/GHSA-h4rx-7jm8-fr3g)),
+  but PreReleaseDelist never invokes a runner, so the vulnerable code path is unreachable.
 - Rate limiting fails fast: dispatching stops, results so far are reported with the rest marked
   `not-attempted`, and the process exits `3`. No retry.
 - Results, summaries and dry-run plans go to stdout; errors and diagnostics go to stderr. The API
