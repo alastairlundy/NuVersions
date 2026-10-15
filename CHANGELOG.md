@@ -4,85 +4,85 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## Unreleased
+## 0.2.0 - 2026-10-15
 
 ### Added
-- `--dry-run`, which resolves and prints the delist plan — *would delist* / *already delisted* /
-  *not on server* — without sending any delete request (network reads still happen; nothing is
-  written). Exit is bucket-aware: `0` only when every requested version exists on the server, `1`
-  when any is absent, `2` when the package itself does not exist. No API key is required in this
-  mode, because delete requests are the only credential-bearing path.
+- `--dry-run` prints the delist plan (would delist / already delisted / not on server) without
+  sending a delete request. No API key required. Exit is bucket-aware: `0` only when every version
+  exists, `1` when any is missing, `2` when the package does not exist.
 - `--output json`: newline-delimited JSON on stdout, one object per version with exactly `package`,
-  `version`, and `status` in that fixed order — no envelope, no array wrapper, no extra fields —
-  with stderr left human-readable.
-- A documented exit-code contract: `0` success, `1` any per-version failure including
-  not-on-server — and command lines the argument parser rejects outright, such as a missing required
-  option or an option missing its value — `2` a validation failure the CLI detects itself (an unknown
-  option, an empty package id, an invalid `--backend`/`--output` value, no version strings, a missing
-  API key on a real run, a package not on the server, or an invalid version string under strict
-  parsing), `3` rate-limited, `4` cancelled, `130` Ctrl-C. Dry-run reuses `0`/`1`/`2`; the four
-  previous `return -1` exits are gone.
-- `DelistOptions`: precedence resolution (`--option` → `PRERELEASEDELIST_*` → `NUGET_*` → default)
-  and mode-aware validation (dry-run skips the API-key requirement) extracted from the command into
-  a pure, testable type.
-- A second distribution channel: self-contained single-file binaries for `win-x64`, `win-arm64`,
-  `linux-x64`, `linux-arm64`, `osx-x64`, and `osx-arm64`, attached to GitHub Releases alongside the
-  primary `dotnet tool` package, with CI-generated SHA-256 checksums — one file per artifact plus a
-  combined `sha256.txt` — for `sha256sum -c` verification. The RID binaries run the HTTP backend
-  with no .NET installed; the SDK backend still requires a host SDK installation.
-- `DelistPlanning`, which partitions requested versions into *to delist*, *already delisted*, and
-  *not on server* — the distinction that fixes the false-success bug above.
+  `version`, `status` in that order. stderr stays human-readable.
+- A documented exit-code contract, pinned by tests: `0` success, `1` per-version failure or a
+  command line the parser rejects, `2` a validation failure the CLI detects itself, `3`
+  rate-limited, `4` cancelled, `130` Ctrl-C. The four `return -1` paths are gone.
+- Six-RID release binaries for `win-x64`, `win-arm64`, `linux-x64`, `linux-arm64`, `osx-x64`,
+  `osx-arm64`, attached to GitHub Releases beside the `dotnet tool` package. Self-contained
+  single-file, each with a SHA-256 file plus a combined `sha256.txt`. The RID binaries run the HTTP
+  backend with no .NET installed.
+- `DelistOptions`, which resolves option precedence (`--option` then `PRERELEASEDELIST_*` then
+  `NUGET_*` then default) and validates per mode, so dry-run skips the API-key check.
+- A test suite: unit tests over the pure logic, handler stubs for the HTTP backend and composing
+  services, and an end-to-end suite driving the CLI against an in-process mock NuGet V3 server. It
+  pins exit codes `0`, `1`, `2`, `3` and `130`, proves dry runs send no delete, and confirms the
+  API key reaches the wire but neither stream.
 
 ### Changed
-- Rate limiting now fails fast: when the server rate-limits the run, dispatching stops, the results
-  collected so far are reported (remaining versions as `not-attempted`), and the process exits `3`.
-  No retry and no graceful-failure path; detection is by HTTP status code on the `http` backend and
-  best-effort on the `sdk` backend.
-- Stream routing: results, summaries, and dry-run plans print to stdout; every error and diagnostic
-  prints to stderr (including the missing-API-key message); the API key is never written to any
-  stream.
-- The per-version delete path is consolidated into a single seam shared by the HTTP and SDK
-  backends, with planning composed in front of it via `DelistPlanning.Partition`; cross-cutting
-  behaviour installs as decorators around the seam.
-- `--non-interactive` lines render `Version=<normalized> Status=<kebab-case>` from the closed
-  status vocabulary (`delisted`, `already-delisted`, `not-on-server`, `rate-limited`, `failed`,
-  `not-attempted`); the old `Success`/`Failure` text and its free-text `Info=`/`Error=` fields are
-  gone, with diagnostics on stderr.
-- README documents the new flags, the exit-code table, both distribution channels (including the
-  SDK backend's host-SDK floor and musl coverage via the tool channel), and the fail-fast
-  rate-limit story.
-- Packaging metadata: package tags corrected and the README packed once from the repository root.
-- `GeneratePackageOnBuild` is replaced by an explicit `dotnet pack` step in `publish.yml`. Every
-  local `dotnet build` no longer produces a `.nupkg`.
-- Removed the `EnhancedLinq` dependency. It was only ever used for one `Exclude` call per delist
-  service, and both now share `DelistPlanning.Partition`.
+- Rate limiting fails fast: dispatching stops, results so far are reported with the rest marked
+  `not-attempted`, and the process exits `3`. No retry.
+- Results, summaries and dry-run plans go to stdout; errors and diagnostics go to stderr. The API
+  key never reaches either stream.
+- Both backends share one per-version delete path behind a single seam, with
+  `DelistPlanning.Partition` composed in front of it and cross-cutting behaviour installed as
+  decorators.
+- `--non-interactive` lines render `Version=<normalized> Status=<kebab-case>` from a closed
+  vocabulary (`delisted`, `already-delisted`, `not-on-server`, `rate-limited`, `failed`,
+  `not-attempted`). The old `Success`/`Failure` text and its free-text `Info=`/`Error=` fields are
+  gone.
+- The command is a presentation and failure boundary: option resolution lives in `DelistOptions`,
+  known exceptions become one-line stderr messages, unknown ones crash with stacks.
+- Shared build policy in `Directory.Build.props` and `.editorconfig`: C# 14, nullable, warnings as
+  errors, style checks at build, NuGet audit. `GeneratePackageOnBuild` is replaced by an explicit
+  `dotnet pack`, so a local `dotnet build` no longer drops a `.nupkg`.
+- Packaging tags corrected, README packed once from the repo root, and README/CHANGELOG rewritten
+  for the new flags, exit codes and both distribution channels.
+- Publish gates pack and push on the test suite, and builds the RID assets from a green tree only.
+- Dependabot points at `/src` where it finds the projects, covers `github-actions` too, groups NuGet
+  minor/patch bumps, and runs weekly with a 14-day version cooldown. Security updates stay
+  immediate.
+- Dropped `EnhancedLinq`, which existed for one `Exclude` call; both services use
+  `DelistPlanning.Partition`.
 
 ### Removed
-- The unauthorized ADR 0001, deleted along with the csproj comments citing it and this changelog's
-  earlier link to it; no orphaned path references remain, and the trim/AOT blocker mechanism now
-  lives only in the decision ledger.
-- The `IsTrimmable` / `IsAoTCompatible` claims. Both a trimmed and a Native AOT publish build
-  successfully and then fail at runtime, because `NuGet.Protocol` deserialises repository signature
-  resources with Newtonsoft.Json reflection that the trimmer removes. The properties stay absent
-  until a publish-and-run against a real feed passes.
+- ADR 0001, the csproj comments citing it, and the link in this changelog. The trim/AOT reasoning
+  lives in the decision ledger.
+- The `IsTrimmable` and `IsAoTCompatible` claims. Trimmed and Native AOT publishes build and then
+  die at runtime, because `NuGet.Protocol` reads signature resources through Newtonsoft.Json
+  reflection the trimmer deletes. The properties stay out until a publish-and-run against a real
+  feed passes.
 
 ### Fixed
-- `--delist-all` now works without supplying any `versions`. The `versions` argument was marked
-  required, so every documented `--delist-all` invocation failed with
-  `Required argument missing for command`. The README examples now run as written.
-- Versions the server does not know about are reported as failures instead of successes. A missing
-  entry in the server's version metadata was previously indistinguishable from "present but
-  unlisted", so a typo'd or never-published version was reported as
-  `Status=Success Info='Package already de-listed.'` and exited 0. Both the `http` and `sdk`
-  backends were affected.
-- `--include-zero-major` is now honoured when passed to `CheckPackageVersionsListedAsync`, which
-  previously ignored it and always searched including pre-releases.
-- Unknown options are rejected instead of silently ignored. An unrecognized `--flag` reaches the
-  `versions` position, where the digit filter used to drop it without a word — so a typo such as
-  `--dry-runn` fell through to the real run it was meant to prevent. The CLI now writes
-  `Error: Unrecognized option: '--flag'.` to stderr and exits `2`. The README examples that spelled
-  version passing as `--versions` (which only worked because that token was ignored) now show
-  versions as positional arguments.
+- `--delist-all` works without `versions`. The argument was marked required, so every documented
+  invocation died with `Required argument missing for command`.
+- Versions the server does not know about are failures, not successes. A missing metadata entry was
+  indistinguishable from "present but unlisted", so a typo exited 0 with
+  `Status=Success Info='Package already de-listed.'`. Both backends had this.
+- Unknown options are rejected instead of swallowed. The tokenizer turned an unrecognized `--flag`
+  into an argument token, the greedy `versions` position took it, and the digit filter dropped it,
+  so `--dry-runn` fell through to the run it was meant to prevent. The CLI writes
+  `Error: Unrecognized option: '--flag'.` to stderr and exits `2`. README examples that passed
+  versions as `--versions`, which worked only because that token was ignored, use positional
+  arguments.
+- Ctrl-C reports `130` again. Neither backend converts a cancellation of the caller token into a
+  `Failed` outcome. A `TaskCanceledException` from something else, like the HttpClient timeout,
+  maps to `Failed`.
+- The SDK backend matches `429` as a standalone token, so a version number like `2.429.0` in
+  failure output no longer reads as a rate limit.
+- On the `http` backend, a `404` counts as already-delisted only when the service index declared
+  the `PackagePublish/2.0.0` endpoint the delete hit. On the fallback route a `404` stays a
+  failure.
+- `--include-zero-major` reaches `CheckPackageVersionsListedAsync`, which ignored it.
+- `global.json` says `10.0.100`, not `10.0.0`. Feature band 0 never ships, and setup-dotnet
+  rejects it when `rollForward` is set, which broke the dependency-submission workflow.
 
 ## 0.1.0 - 2026-09-18
 
