@@ -20,7 +20,7 @@ namespace NuVersionsCli;
 
 /// <summary>
 /// Describes a single options validation failure.
-/// Ticket 007 maps any failure to the usage exit code (T005).
+/// Any validation failure maps to the usage exit code.
 /// </summary>
 /// <param name="Field">The option field that failed validation.</param>
 /// <param name="Message">Human-readable description of the failure.</param>
@@ -30,7 +30,7 @@ public sealed record DelistOptionsValidationFailure(string Field, string Message
 /// Resolved, validated CLI options. Pure logic only: no console access,
 /// no service resolution, no <c>IConfiguration</c> or environment access.
 /// Callers prefetch configuration values as plain strings and pass them in,
-/// so unit tests can drive every branch. Per T009 (dedicated options type).
+/// so unit tests can drive every branch. Hence the dedicated options type.
 /// </summary>
 public sealed record DelistOptions
 {
@@ -103,7 +103,7 @@ public sealed record DelistOptions
     /// explicit <c>--api-key</c> option first, then the
     /// <c>NUVERSIONS_NuGetApiKey</c> prefixed variable, then the generic
     /// <c>NUGET_API_KEY</c> variable, then unset (null — missing key is a
-    /// validation failure unless dry-run mode skips it per T003).
+    /// validation failure unless dry-run mode skips it).
     /// Empty counts as unset. Matches README Configuration section.
     /// </summary>
     public static string? ResolveApiKey(string? optionValue, string? prefixedValue, string? genericValue)
@@ -167,7 +167,7 @@ public sealed record DelistOptions
     /// <summary>
     /// Validates the resolved options, returning one failure per violated rule.
     /// Dry-run mode skips the API-key requirement (delete requests are the only
-    /// credential-bearing path per T003); a real run requires it.
+    /// credential-bearing path); a real run requires it.
     /// </summary>
     public IReadOnlyList<DelistOptionsValidationFailure> Validate()
     {
