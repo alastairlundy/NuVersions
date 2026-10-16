@@ -25,7 +25,7 @@ using TUnit.Core;
 namespace NuVersionsLib.Tests;
 
 /// <summary>
-/// Status translation in the HTTP delete backend (T002): every response the stub replays maps to
+/// Status translation in the HTTP delete backend: every response the stub replays maps to
 /// exactly one closed <see cref="PackageVersionStatus"/> member, with no external network — the
 /// service index is served from a loopback listener and the DELETE itself goes through the stub.
 /// </summary>

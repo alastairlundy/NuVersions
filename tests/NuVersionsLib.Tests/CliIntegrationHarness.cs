@@ -30,7 +30,7 @@ namespace NuVersionsLib.Tests;
 /// <summary>
 /// Drives the real CLI end-to-end, in-process: DotMake parses and binds the argument vector,
 /// the composition root builds the production container, and the exit code comes back from
-/// <see cref="UnlistCommand.RunAsync"/> with stdout and stderr captured (T005, T006, T008).
+/// <see cref="UnlistCommand.RunAsync"/> with stdout and stderr captured.
 /// </summary>
 /// <remarks>
 /// <para>

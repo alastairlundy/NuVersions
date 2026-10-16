@@ -29,7 +29,7 @@ using TUnit.Core;
 namespace NuVersionsLib.Tests;
 
 /// <summary>
-/// Stream routing under the presentation contract (T006): the dry-run plan and results go to
+/// Stream routing under the presentation contract: the dry-run plan and results go to
 /// stdout, every diagnostic goes to stderr. The routing decision lives in the command body, so
 /// these tests drive the real <see cref="UnlistCommand"/> over hand-written service fakes.
 /// </summary>

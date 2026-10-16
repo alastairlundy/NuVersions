@@ -64,7 +64,7 @@ public class ShowCommand
         _serviceProvider = serviceProvider;
 
         // Prefetched as a plain value so the command body holds no environment-variable lookups;
-        // the precedence chain itself lives in DelistOptions.ResolveServerUrl (T009).
+        // the precedence chain itself lives in DelistOptions.ResolveServerUrl.
         _serverUrlGeneric = Environment.GetEnvironmentVariable("NUGET_SERVER_URL");
     }
 
@@ -135,7 +135,7 @@ public class ShowCommand
         }
         catch (ArgumentException exception)
         {
-            // Package-not-found-on-server is thrown by the composing services (T012).
+            // Package-not-found-on-server is thrown by the composing services.
             await Console.Error.WriteLineAsync(exception.Message);
             return ExitUsage;
         }
@@ -146,7 +146,7 @@ public class ShowCommand
         }
         catch (InvalidOperationException exception)
         {
-            // The library reports an unavailable NuGet.Protocol resource with this type (T012).
+            // The library reports an unavailable NuGet.Protocol resource with this type.
             await Console.Error.WriteLineAsync(exception.Message);
             return ExitFailure;
         }
@@ -178,7 +178,7 @@ public class ShowCommand
 
     /// <summary>
     /// The NDJSON line shared with the unlist command: exactly three fields in the fixed order
-    /// package, version, status — no envelope, no array wrapper, no additional fields (T007).
+    /// package, version, status — no envelope, no array wrapper, no additional fields.
     /// </summary>
     private static string ToJsonPropertyLine(string packageId, NuGetVersion version, string status)
     {

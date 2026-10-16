@@ -24,7 +24,7 @@ using TUnit.Core;
 namespace NuVersionsLib.Tests;
 
 /// <summary>
-/// Exit-code contract (T005): every member of the closed status vocabulary maps to its documented
+/// Exit-code contract: every member of the closed status vocabulary maps to its documented
 /// process code, and a dry run can only ever exit 0, 1 or 2 — never 3 (rate-limited) or 4
 /// (cancelled), because a dry run dispatches nothing that could be rate-limited or cancelled.
 /// </summary>

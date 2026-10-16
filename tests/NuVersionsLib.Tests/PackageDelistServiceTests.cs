@@ -25,7 +25,7 @@ using TUnit.Core;
 namespace NuVersionsLib.Tests;
 
 /// <summary>
-/// The composing service's fail-fast dispatch loop and bucket merging (T002, T004): a rate limit on
+/// The composing service's fail-fast dispatch loop and bucket merging: a rate limit on
 /// the first dispatch stops the run, bucket outcomes need no dispatch at all, and every requested
 /// version yields exactly one outcome in the documented order.
 /// </summary>

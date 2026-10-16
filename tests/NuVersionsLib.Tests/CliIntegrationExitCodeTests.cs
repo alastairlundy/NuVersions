@@ -29,7 +29,7 @@ using TUnit.Core;
 namespace NuVersionsLib.Tests;
 
 /// <summary>
-/// The documented exit-code contract driven end-to-end (T005): every run below goes through DotMake
+/// The documented exit-code contract driven end-to-end: every run below goes through DotMake
 /// argument binding, the production composition, the real HTTP backend, and the in-process mock NuGet
 /// V3 server — the code that comes back is the code the process would exit with.
 /// </summary>

@@ -24,7 +24,7 @@ using TUnit.Core;
 namespace NuVersionsLib.Tests;
 
 /// <summary>
-/// The documented output formats and stream routing driven end-to-end (T006, T007): human grouping,
+/// The documented output formats and stream routing driven end-to-end: human grouping,
 /// <c>--non-interactive</c> kebab lines, NDJSON with a fixed three-field order, and the stdout/stderr
 /// split — all asserted against the in-process mock NuGet V3 server.
 /// </summary>

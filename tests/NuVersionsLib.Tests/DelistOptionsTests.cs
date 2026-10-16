@@ -22,7 +22,7 @@ using TUnit.Core;
 namespace NuVersionsLib.Tests;
 
 /// <summary>
-/// <see cref="DelistOptions"/> precedence resolution (T009) and mode-aware validation (T003):
+/// <see cref="DelistOptions"/> precedence resolution and mode-aware validation:
 /// option, then <c>NUVERSIONS_*</c>, then <c>NUGET_*</c>, then default — and every validation
 /// rule shown with both its failing and its passing shape.
 /// </summary>

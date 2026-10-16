@@ -32,14 +32,14 @@ namespace NuVersionsCli;
 /// <remarks>
 /// <para>
 /// DotMake binding attributes stay on this class and feed <see cref="DelistOptions"/>; the body consumes
-/// the resolved options and never resolves precedence itself (T009). No options object crosses the seam:
+/// the resolved options and never resolves precedence itself. No options object crosses the seam:
 /// the service layer keeps its explicit parameters.
 /// </para>
 /// <para>
 /// Results, summaries, and the dry-run plan print to stdout; every error and diagnostic prints to stderr,
-/// and the API key is never written to any stream (T006). The process exits only with the documented
-/// codes 0, 1, 2, 3, 4, or 130 (T005); anything unexpected is left unhandled so it crashes with its stack
-/// trace (T012).
+/// and the API key is never written to any stream. The process exits only with the documented
+/// codes 0, 1, 2, 3, 4, or 130; anything unexpected is left unhandled so it crashes with its stack
+/// trace.
 /// </para>
 /// </remarks>
 [CliCommand(Name = "unlist", Parent = typeof(NuVersionsCommand),
@@ -75,7 +75,7 @@ public class UnlistCommand
         _serviceProvider = serviceProvider;
 
         // Prefetched as plain values so the command body holds no environment-variable lookups; the
-        // precedence chain itself lives in DelistOptions.Create (T009).
+        // precedence chain itself lives in DelistOptions.Create.
         _apiKeyGeneric = Environment.GetEnvironmentVariable("NUGET_API_KEY");
         _serverUrlGeneric = Environment.GetEnvironmentVariable("NUGET_SERVER_URL");
     }
@@ -121,7 +121,7 @@ public class UnlistCommand
     public bool IncludeZeroMajor { get; set; } = false;
 
     /// <summary>
-    /// Prints the delist plan without sending any delete request (T003). No API key is required in
+    /// Prints the delist plan without sending any delete request. No API key is required in
     /// this mode, and it exits only with 0, 1, or 2.
     /// </summary>
     [CliOption(Name = "--dry-run", Required = false)]
@@ -130,7 +130,7 @@ public class UnlistCommand
 
     /// <summary>
     /// The output format: "text" (default) or "json" for newline-delimited JSON on stdout, one object
-    /// per requested version (T007).
+    /// per requested version.
     /// </summary>
     [CliOption(Name = "--output", Required = false)]
     [DefaultValue(DelistOptions.DefaultOutputMode)]
@@ -142,7 +142,7 @@ public class UnlistCommand
         // (only a missing required option or a missing option value reaches it as an error), and the
         // greedy versions position absorbs it — where the digit filter in ResolveOptions would drop
         // it silently. Reject option-looking tokens here so a typo fails the run as the usage error
-        // it is, instead of vanishing (T005).
+        // it is, instead of vanishing.
         string[] unknownOptions = (Versions ?? [])
             .Where(static version => version.StartsWith('-'))
             .ToArray();
@@ -181,7 +181,7 @@ public class UnlistCommand
 
         try
         {
-            // Resolving the keyed service here proves the composition-root wiring (TK008) before any
+            // Resolving the keyed service here proves the composition-root wiring before any
             // work starts, for dry runs and real runs alike.
             IPackageDelistService delistService = GetDelistService(options.Backend);
 
@@ -192,25 +192,25 @@ public class UnlistCommand
         catch (ArgumentException exception)
         {
             // Package-not-found-on-server (thrown by the composing services) and invalid version
-            // strings under strict parsing both surface as ArgumentException → usage (T012).
+            // strings under strict parsing both surface as ArgumentException → usage.
             await Console.Error.WriteLineAsync(exception.Message);
             return ExitUsage;
         }
         catch (NuGetProtocolException exception)
         {
-            // NuGet.Protocol failures, including resource unavailability, are feed-side problems → 1 (T012).
+            // NuGet.Protocol failures, including resource unavailability, are feed-side problems → 1.
             await Console.Error.WriteLineAsync(exception.Message);
             return ExitFailure;
         }
         catch (InvalidOperationException exception)
         {
-            // The library reports an unavailable NuGet.Protocol resource with this type → 1 (T012).
+            // The library reports an unavailable NuGet.Protocol resource with this type → 1.
             await Console.Error.WriteLineAsync(exception.Message);
             return ExitFailure;
         }
         catch (OperationCanceledException)
         {
-            // Ctrl-C cancels the token above; a cancelled run exits 130 (T005).
+            // Ctrl-C cancels the token above; a cancelled run exits 130.
             return ExitInterrupted;
         }
         finally
@@ -221,7 +221,7 @@ public class UnlistCommand
 
     /// <summary>
     /// Builds the resolved options from the bound values plus the prefetched configuration strings.
-    /// Precedence resolution and mode-aware validation belong to <see cref="DelistOptions"/> (T009).
+    /// Precedence resolution and mode-aware validation belong to <see cref="DelistOptions"/>.
     /// </summary>
     private DelistOptions ResolveOptions()
     {
@@ -255,8 +255,8 @@ public class UnlistCommand
 
     private static string DescribeValidationFailure(DelistOptionsValidationFailure failure)
     {
-        // The two failures with an established message keep their localized wording: T006 moves the
-        // API-key error to stderr, where it stays one line like every other diagnostic.
+        // The two failures with an established message keep their localized wording: the API-key
+        // error moves to stderr, where it stays one line like every other diagnostic.
         return failure.Field switch
         {
             nameof(DelistOptions.ApiKey) => Resources.Exceptions_Configuration_NugetApiKey,
@@ -280,7 +280,7 @@ public class UnlistCommand
 
     /// <summary>
     /// Sends the delete requests through the composing service, renders every outcome, and returns the
-    /// merged exit code (T005).
+    /// merged exit code.
     /// </summary>
     private async Task<int> RunDelistAsync(DelistOptions options, IPackageDelistService delistService,
         CancellationToken cancellationToken)
@@ -318,7 +318,7 @@ public class UnlistCommand
     /// <summary>
     /// Resolves and prints the delist plan without sending any delete request, then exits bucket-aware:
     /// 0 only when every requested version exists on the server, 1 when any is absent, 2 when the
-    /// package itself does not exist (T003). Dry runs never emit 3 or 4.
+    /// package itself does not exist. Dry runs never emit 3 or 4.
     /// </summary>
     private async Task<int> RunDryRunAsync(DelistOptions options, CancellationToken cancellationToken)
     {
@@ -327,7 +327,7 @@ public class UnlistCommand
         IPackageVersionService versionService =
             _serviceProvider.GetRequiredService<IPackageVersionService>();
 
-        // Network reads still happen (T003). The read paths require a non-empty API key string but
+        // Network reads still happen. The read paths require a non-empty API key string but
         // never send it, so a keyless dry-run passes a placeholder; no key is ever written to a stream.
         string readApiKey = options.ApiKey ?? "dry-run";
 
@@ -393,7 +393,7 @@ public class UnlistCommand
 
     /// <summary>
     /// Renders every outcome to stdout: JSON lines, bare non-interactive lines, or grouped human
-    /// output (T006, T007).
+    /// output.
     /// </summary>
     private static async Task WriteResultsAsync(DelistOptions options,
         IReadOnlyList<PackageVersionOutcome> outcomes)
@@ -448,7 +448,7 @@ public class UnlistCommand
         outcome.Status is PackageVersionStatus.Unlisted or PackageVersionStatus.AlreadyUnlisted;
 
     /// <summary>
-    /// The machine line shared by the human and non-interactive text formats (T004, T018).
+    /// The machine line shared by the human and non-interactive text formats.
     /// </summary>
     private static string DescribeOutcome(PackageVersionOutcome outcome) =>
         $"Version={outcome.Version.ToNormalizedString()} Status={outcome.Status.ToKebabCase()}";
@@ -458,7 +458,7 @@ public class UnlistCommand
 
     /// <summary>
     /// One NDJSON line with exactly three fields in the fixed order package, version, status — no
-    /// envelope, no array wrapper, no additional fields (T007). The version is the normalized string
+    /// envelope, no array wrapper, no additional fields. The version is the normalized string
     /// and the package id is carried exactly as supplied.
     /// </summary>
     private static string ToJsonPropertyLine(string packageId, NuGetVersion version,
@@ -473,9 +473,9 @@ public class UnlistCommand
 
     /// <summary>
     /// Maps a per-version outcome to its documented exit code. Every member of the closed vocabulary
-    /// is handled explicitly (T004, T005): a member added to the enum reaches the throwing catch-all
+    /// is handled explicitly: a member added to the enum reaches the throwing catch-all
     /// arm — C# forces that arm on an enum switch expression (CS8524) — and fails loudly here and in
-    /// <c>ToKebabCase</c> until its exit code is decided (T018).
+    /// <c>ToKebabCase</c> until its exit code is decided.
     /// </summary>
     internal static int ToExitCode(PackageVersionStatus status) => status switch
     {
@@ -536,7 +536,7 @@ public class UnlistCommand
 
     /// <summary>
     /// The JSON rendering of a bucket uses only the closed status vocabulary: a version a dry run
-    /// would delist is a delete attempt that was never made (T004, T007).
+    /// would delist is a delete attempt that was never made.
     /// </summary>
     private static PackageVersionStatus ToBucketStatus(DryRunBucket bucket) => bucket switch
     {

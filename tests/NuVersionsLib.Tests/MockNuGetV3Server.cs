@@ -37,7 +37,7 @@ internal sealed record RecordedRequest(string Method, string Path, string? ApiKe
 /// <remarks>
 /// <para>
 /// The CLI integration tier drives the production composition against this server instead of a real
-/// feed, so the whole pyramid runs in-process with no external network (T008). The four resources
+/// feed, so the whole pyramid runs in-process with no external network. The four resources
 /// above are exactly the ones NuGet.Protocol resolves for this feature: <c>PackageBaseAddress</c> for
 /// the availability check, <c>RegistrationsBaseUrl</c> for listing metadata, and
 /// <c>PackagePublish</c> for the DELETE dispatch; the service index binds them together.

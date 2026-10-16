@@ -21,13 +21,13 @@ using NuVersionsLib.Models;
 namespace NuVersionsCli.Helpers;
 
 /// <summary>
-/// The single CLI-side renderer for the closed <see cref="PackageVersionStatus"/> vocabulary (T018).
+/// The single CLI-side renderer for the closed <see cref="PackageVersionStatus"/> vocabulary.
 /// </summary>
 /// <remarks>
 /// Every member of the closed vocabulary is spelled out explicitly, here and at the exit-code mapping
-/// site, so no output mode can silently render an unknown status (T004). C# requires a catch-all arm on
+/// site, so no output mode can silently render an unknown status. C# requires a catch-all arm on
 /// an enum switch expression (CS8524), so the unnamed arm throws instead of rendering: a member added to
-/// the enum reaches it loudly and instructs the maintainer to add its kebab-case spelling (T004, T018).
+/// the enum reaches it loudly and instructs the maintainer to add its kebab-case spelling.
 /// </remarks>
 internal static class PackageVersionStatusExtensions
 {

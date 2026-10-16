@@ -23,7 +23,7 @@ using TUnit.Core;
 namespace NuVersionsLib.Tests;
 
 /// <summary>
-/// Kebab-case rendering of the closed status vocabulary (T018): every member spells out exactly,
+/// Kebab-case rendering of the closed status vocabulary: every member spells out exactly,
 /// so no output mode can render an unknown or differently-shaped status.
 /// </summary>
 public class StatusKebabRenderingTests

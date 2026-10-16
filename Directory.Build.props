@@ -20,7 +20,7 @@
       NuGet audit covers the whole dependency graph (direct + transitive).
       Findings surface as NU190x warnings during restore and fail the build
       via TreatWarningsAsErrors. The restore lockfile (packages.lock.json in
-      locked mode) is deliberately excluded by T011: audit runs against the
+      locked mode) is deliberately excluded: audit runs against the
       unlocked graph where transitive versions float.
     -->
     <NuGetAudit>true</NuGetAudit>

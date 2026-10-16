@@ -131,7 +131,7 @@ jobs:
       # Self-contained single-file publish: the resulting binary runs the HTTP
       # backend with no .NET installed (the SDK backend still needs a host SDK
       # — packaging cannot change that, README channel 2). No trim or AOT
-      # flags anywhere (D002); adding one would be a decision reversal.
+      # flags anywhere; adding one would be a decision reversal.
       - name: Publish (self-contained, single file)
         run: >
           dotnet publish src/NuVersionsCli/NuVersionsCli.csproj
@@ -145,7 +145,7 @@ jobs:
           mkdir -p dist
           zip -9 -r -j "dist/nuversions-${{ matrix.rid }}.zip" "publish/${{ matrix.rid }}"/*
 
-      # GitHub publishes no checksums, so the workflow computes them (T019):
+      # GitHub publishes no checksums, so the workflow computes them:
       # one `.sha256` file per artifact, written from inside the directory so
       # the recorded name carries no path prefix and `sha256sum -c` works
       # straight on the downloaded release asset. The self-check proves the
