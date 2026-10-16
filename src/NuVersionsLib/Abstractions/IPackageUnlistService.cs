@@ -21,7 +21,7 @@ namespace NuVersionsLib.Abstractions;
 /// <summary>
 /// Interface for requesting package delisting from a NuGet Server.
 /// </summary>
-public interface IPackageDelistService
+public interface IPackageUnlistService
 {
     /// <summary>
     /// Requests the delisting of all prerelease versions of a NuGet package.
@@ -32,7 +32,7 @@ public interface IPackageDelistService
     /// <param name="includeZeroMajorVersions">When true, stable versions with Major == 0 are also unlisted alongside prerelease versions.</param>
     /// <param name="cancellationToken">A cancellation token that can be used to request cancellation of the operation.</param>
     /// <returns>An asynchronous sequence containing one <see cref="PackageVersionOutcome"/> per requested version.</returns>
-    IAsyncEnumerable<PackageVersionOutcome> RequestPackageDelistingAsync(
+    IAsyncEnumerable<PackageVersionOutcome> RequestPackageUnlistingAsync(
         string nugetApiUrl, string nugetApiKey, string packageName, bool includeZeroMajorVersions = false,
         CancellationToken cancellationToken = default);
 
@@ -45,6 +45,6 @@ public interface IPackageDelistService
     /// <param name="versions">The specific versions to delist.</param>
     /// <param name="cancellationToken">A cancellation token that can be used to request cancellation of the operation.</param>
     /// <returns>An asynchronous sequence containing one <see cref="PackageVersionOutcome"/> per requested version.</returns>
-    IAsyncEnumerable<PackageVersionOutcome> RequestPackageDelistingAsync(
+    IAsyncEnumerable<PackageVersionOutcome> RequestPackageUnlistingAsync(
         string nugetApiUrl, string nugetApiKey, string packageName, IList<NuGetVersion> versions, CancellationToken cancellationToken);
 }

@@ -19,7 +19,6 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using NuVersionsCli;
-using TUnit.Core;
 
 namespace NuVersionsLib.Tests;
 

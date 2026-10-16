@@ -16,8 +16,6 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-using DotMake.CommandLine;
-
 namespace NuVersionsCli;
 
 /// <summary>
@@ -30,9 +28,9 @@ namespace NuVersionsCli;
 /// subcommand token to its child, so a genuine typo is a parser error used as the documented
 /// command-line failure exit.
 /// </remarks>
-[CliCommand(Description = "Show and unlist (delist) NuGet package versions.",
+[CliCommand(Description = "Show and unlist NuGet package versions.",
     Children = [typeof(ShowCommand), typeof(UnlistCommand)])]
-public class NuVersionsCommand
+public class RootCommand
 {
     public void Run(CliContext context)
     {

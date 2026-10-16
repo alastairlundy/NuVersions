@@ -20,11 +20,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using NuGet.Versioning;
 using NuVersionsCli;
-using NuVersionsLib;
 using NuVersionsLib.Abstractions;
 using NuVersionsLib.Detectors;
 using NuVersionsLib.Models;
-using TUnit.Core;
 
 namespace NuVersionsLib.Tests;
 
@@ -333,8 +331,8 @@ public class CliIntegrationExitCodeTests
     {
         ServiceCollection services = new();
         services.AddSingleton<IPackageAvailabilityDetector, PackageAvailabilityDetector>();
-        services.AddKeyedSingleton<IPackageDelistService>("http", static (provider, _) =>
-            new PackageDelistService(
+        services.AddKeyedSingleton<IPackageUnlistService>("http", static (provider, _) =>
+            new PackageUnlistService(
                 new InterruptedVersionService(),
                 provider.GetRequiredService<IPackageAvailabilityDetector>(),
                 new ScriptedDeleter()));
@@ -384,7 +382,7 @@ internal sealed class InterruptedVersionService : IPackageVersionService
         string packageId, CancellationToken cancellationToken)
         => throw new NotSupportedException("InterruptedVersionService only scripts the listing read.");
 
-    public Task<bool> IsPackageVersionDelistedAsync(string nugetApiUrl, string nugetApiKey,
+    public Task<bool> IsPackageVersionUnlistedAsync(string nugetApiUrl, string nugetApiKey,
         string packageId, bool includePreReleaseVersions, NuGetVersion packageVersion,
         CancellationToken cancellationToken)
         => throw new NotSupportedException("InterruptedVersionService only scripts the listing read.");

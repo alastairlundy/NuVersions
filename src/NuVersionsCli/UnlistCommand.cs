@@ -22,7 +22,11 @@ using Microsoft.Extensions.DependencyInjection;
 using NuGet.Protocol.Core.Types;
 using NuGet.Versioning;
 using NuVersionsCli.Helpers;
+using NuVersionsCli.Models;
 using NuVersionsLib.Models;
+
+// ReSharper disable ArgumentsStyleOther
+// ReSharper disable RedundantDefaultMemberInitializer
 
 namespace NuVersionsCli;
 
@@ -31,7 +35,7 @@ namespace NuVersionsCli;
 /// </summary>
 /// <remarks>
 /// <para>
-/// DotMake binding attributes stay on this class and feed <see cref="DelistOptions"/>; the body consumes
+/// DotMake binding attributes stay on this class and feed <see cref="UnlistOptions"/>; the body consumes
 /// the resolved options and never resolves precedence itself. No options object crosses the seam:
 /// the service layer keeps its explicit parameters.
 /// </para>
@@ -42,8 +46,8 @@ namespace NuVersionsCli;
 /// trace.
 /// </para>
 /// </remarks>
-[CliCommand(Name = "unlist", Parent = typeof(NuVersionsCommand),
-    Description = "Unlist (delist) specified or all pre-release versions of a NuGet package.")]
+[CliCommand(Name = "unlist", Parent = typeof(RootCommand),
+    Description = "Unlist specified or all pre-release versions of a NuGet package.")]
 public class UnlistCommand
 {
     /// <summary>Every requested version was unlisted or was already unlisted.</summary>
@@ -83,9 +87,10 @@ public class UnlistCommand
     // Initialized by DotMake option/argument binding after construction.
     [CliOption(Name = "--package-id", Required = true,
         Arity = CliArgumentArity.ExactlyOne)]
-    public string PackageId { get; set; } = null!;
+    public string PackageId { get; set; } = string.Empty;
 
     [CliOption(Name = "--delist-all")]
+    // ReSharper disable once RedundantDefaultMemberInitializer
     public bool DelistAllVersions { get; set; } = false;
 
     [CliOption(Name = "--use-strict-parsing")]
@@ -133,19 +138,20 @@ public class UnlistCommand
     /// per requested version.
     /// </summary>
     [CliOption(Name = "--output", Required = false)]
-    [DefaultValue(DelistOptions.DefaultOutputMode)]
-    public string OutputMode { get; set; } = DelistOptions.DefaultOutputMode;
+    [DefaultValue(UnlistOptions.DefaultOutputMode)]
+    public string OutputMode { get; set; } = UnlistOptions.DefaultOutputMode;
 
     public async Task<int> RunAsync()
     {
-        // The argument tokenizer turns an unknown option such as --typo into a plain argument token
+        // The argument tokeniser turns an unknown option such as --typo into a plain argument token
         // (only a missing required option or a missing option value reaches it as an error), and the
-        // greedy versions position absorbs it — where the digit filter in ResolveOptions would drop
-        // it silently. Reject option-looking tokens here so a typo fails the run as the usage error
+        // greedy versions position absorbs it. Reject option-looking tokens here so a typo fails the run as the usage error
         // it is, instead of vanishing.
-        string[] unknownOptions = (Versions ?? [])
-            .Where(static version => version.StartsWith('-'))
-            .ToArray();
+        string[] unknownOptions =
+        [
+            .. Versions
+                .Where(static version => version.StartsWith('-'))
+        ];
 
         if (unknownOptions.Length > 0)
         {
@@ -157,13 +163,13 @@ public class UnlistCommand
             return ExitUsage;
         }
 
-        DelistOptions options = ResolveOptions();
+        UnlistOptions options = ResolveOptions();
 
-        IReadOnlyList<DelistOptionsValidationFailure> failures = options.Validate();
+        IReadOnlyList<UnlistOptionsValidationFailure> failures = options.Validate();
 
         if (failures.Count > 0)
         {
-            foreach (DelistOptionsValidationFailure failure in failures)
+            foreach (UnlistOptionsValidationFailure failure in failures)
             {
                 await Console.Error.WriteLineAsync(DescribeValidationFailure(failure));
             }
@@ -183,7 +189,7 @@ public class UnlistCommand
         {
             // Resolving the keyed service here proves the composition-root wiring before any
             // work starts, for dry runs and real runs alike.
-            IPackageDelistService delistService = GetDelistService(options.Backend);
+            IPackageUnlistService delistService = GetUnlistService(options.Backend);
 
             return options.DryRun
                 ? await RunDryRunAsync(options, cancellationSource.Token)
@@ -221,21 +227,23 @@ public class UnlistCommand
 
     /// <summary>
     /// Builds the resolved options from the bound values plus the prefetched configuration strings.
-    /// Precedence resolution and mode-aware validation belong to <see cref="DelistOptions"/>.
+    /// Precedence resolution and mode-aware validation belong to <see cref="UnlistOptions"/>.
     /// </summary>
-    private DelistOptions ResolveOptions()
+    private UnlistOptions ResolveOptions()
     {
-        string[] requestedVersions = Versions ?? [];
+        string[] requestedVersions = Versions;
 
         if (!DelistAllVersions)
         {
             // Only version strings starting with a digit are considered; the rest are ignored.
-            requestedVersions = requestedVersions
-                .Where(version => !string.IsNullOrWhiteSpace(version) && char.IsDigit(version.Trim()[0]))
-                .ToArray();
+            requestedVersions =
+            [
+                .. requestedVersions
+                    .Where(version => !string.IsNullOrWhiteSpace(version) && char.IsDigit(version.Trim()[0]))
+            ];
         }
 
-        return DelistOptions.Create(
+        return UnlistOptions.Create(
             packageId: PackageId,
             versions: requestedVersions,
             apiKeyOption: ApiKey,
@@ -253,14 +261,14 @@ public class UnlistCommand
             outputMode: OutputMode);
     }
 
-    private static string DescribeValidationFailure(DelistOptionsValidationFailure failure)
+    private static string DescribeValidationFailure(UnlistOptionsValidationFailure failure)
     {
         // The two failures with an established message keep their localized wording: the API-key
         // error moves to stderr, where it stays one line like every other diagnostic.
         return failure.Field switch
         {
-            nameof(DelistOptions.ApiKey) => Resources.Exceptions_Configuration_NugetApiKey,
-            nameof(DelistOptions.Versions) => Resources.Errors_Input_NoVersionStrings,
+            nameof(UnlistOptions.ApiKey) => Resources.Exceptions_Configuration_NugetApiKey,
+            nameof(UnlistOptions.Versions) => Resources.Errors_Input_NoVersionStrings,
             _ => $"Error: {failure.Message}"
         };
     }
@@ -269,27 +277,29 @@ public class UnlistCommand
     /// Resolves the composing service for the selected backend. Validation has already proven the
     /// backend is one of the two registered keys, so the keys here stay exactly "http" and "sdk".
     /// </summary>
-    private IPackageDelistService GetDelistService(string backend)
+    private IPackageUnlistService GetUnlistService(string backend)
     {
         string serviceKey = string.Equals(backend, "sdk", StringComparison.OrdinalIgnoreCase)
             ? "sdk"
-            : DelistOptions.DefaultBackend;
+            : UnlistOptions.DefaultBackend;
 
-        return _serviceProvider.GetRequiredKeyedService<IPackageDelistService>(serviceKey);
+        return _serviceProvider.GetRequiredKeyedService<IPackageUnlistService>(serviceKey);
     }
 
     /// <summary>
     /// Sends the delete requests through the composing service, renders every outcome, and returns the
     /// merged exit code.
     /// </summary>
-    private async Task<int> RunDelistAsync(DelistOptions options, IPackageDelistService delistService,
+    private async Task<int> RunDelistAsync(UnlistOptions options, IPackageUnlistService delistService,
         CancellationToken cancellationToken)
     {
+        ArgumentException.ThrowIfNullOrEmpty(options.ApiKey);
+
         IAsyncEnumerable<PackageVersionOutcome> results;
 
         if (options.DelistAllVersions)
         {
-            results = delistService.RequestPackageDelistingAsync(options.ServerUrl, options.ApiKey!,
+            results = delistService.RequestPackageUnlistingAsync(options.ServerUrl, options.ApiKey,
                 options.PackageId, options.IncludeZeroMajor, cancellationToken);
         }
         else
@@ -297,14 +307,14 @@ public class UnlistCommand
             IList<NuGetVersion> requestedVersions =
                 ParseVersions([.. options.Versions], options.UseStrictParsing);
 
-            results = delistService.RequestPackageDelistingAsync(options.ServerUrl, options.ApiKey!,
+            results = delistService.RequestPackageUnlistingAsync(options.ServerUrl, options.ApiKey,
                 options.PackageId, requestedVersions, cancellationToken);
         }
 
         List<PackageVersionOutcome> outcomes = [];
         int exitCode = ExitSuccess;
 
-        await foreach (PackageVersionOutcome outcome in results)
+        await foreach (PackageVersionOutcome outcome in results.WithCancellation(cancellationToken))
         {
             outcomes.Add(outcome);
             exitCode = MergeExitCode(exitCode, ToExitCode(outcome.Status));
@@ -320,7 +330,7 @@ public class UnlistCommand
     /// 0 only when every requested version exists on the server, 1 when any is absent, 2 when the
     /// package itself does not exist. Dry runs never emit 3 or 4.
     /// </summary>
-    private async Task<int> RunDryRunAsync(DelistOptions options, CancellationToken cancellationToken)
+    private async Task<int> RunDryRunAsync(UnlistOptions options, CancellationToken cancellationToken)
     {
         IPackageAvailabilityDetector availabilityDetector =
             _serviceProvider.GetRequiredService<IPackageAvailabilityDetector>();
@@ -395,7 +405,7 @@ public class UnlistCommand
     /// Renders every outcome to stdout: JSON lines, bare non-interactive lines, or grouped human
     /// output.
     /// </summary>
-    private static async Task WriteResultsAsync(DelistOptions options,
+    private static async Task WriteResultsAsync(UnlistOptions options,
         IReadOnlyList<PackageVersionOutcome> outcomes)
     {
         if (IsJsonOutput(options))
@@ -453,7 +463,7 @@ public class UnlistCommand
     private static string DescribeOutcome(PackageVersionOutcome outcome) =>
         $"Version={outcome.Version.ToNormalizedString()} Status={outcome.Status.ToKebabCase()}";
 
-    private static bool IsJsonOutput(DelistOptions options) =>
+    private static bool IsJsonOutput(UnlistOptions options) =>
         string.Equals(options.OutputMode, "json", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
@@ -513,18 +523,6 @@ public class UnlistCommand
         return ExitSuccess;
     }
 
-    /// <summary>
-    /// One line of the dry-run plan: a requested version and the bucket it landed in.
-    /// </summary>
-    private sealed record DryRunPlanLine(NuGetVersion Version, DryRunBucket Bucket);
-
-    private enum DryRunBucket
-    {
-        WouldDelist,
-        AlreadyDelisted,
-        NotOnServer
-    }
-
     private static string DescribeBucket(DryRunBucket bucket) => bucket switch
     {
         DryRunBucket.WouldDelist => "would-unlist",
@@ -566,6 +564,6 @@ public class UnlistCommand
             }
         }
 
-        return output.Distinct().ToList();
+        return [.. output.Distinct()];
     }
 }

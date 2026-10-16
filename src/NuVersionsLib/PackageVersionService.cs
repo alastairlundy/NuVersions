@@ -107,7 +107,7 @@ public class PackageVersionService : IPackageVersionService
 
         if (allPackageVersions is null)
             return [];
-        
+
         return allPackageVersions.Where(v => IsTargetPrereleaseVersion(v, includeZeroMajorVersions))
             .ToArray();
     }
@@ -182,13 +182,13 @@ public class PackageVersionService : IPackageVersionService
     /// <param name="packageVersion">The specific version of the package to verify against.</param>
     /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
     /// <returns>A boolean value indicating whether the specified package version is unlisted. Returns true if unlisted, false otherwise.</returns>
-    public async Task<bool> IsPackageVersionDelistedAsync(string nugetApiUrl, string nugetApiKey, string packageId,
+    public async Task<bool> IsPackageVersionUnlistedAsync(string nugetApiUrl, string nugetApiKey, string packageId,
         bool includePreReleaseVersions, NuGetVersion packageVersion, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrEmpty(packageId);
         ArgumentException.ThrowIfNullOrEmpty(nugetApiUrl);
         ArgumentException.ThrowIfNullOrEmpty(nugetApiKey);
-        
+
         SourceRepository repoInfo = GetRepoInfo(nugetApiUrl);
 
         using var cacheContext = new SourceCacheContext();
@@ -199,7 +199,7 @@ public class PackageVersionService : IPackageVersionService
         if (metadataResource is null)
             throw new InvalidOperationException($"Package metadata resource is not available for this source: {nugetApiUrl}");
 
-        PackageIdentity identity = new PackageIdentity(packageId, packageVersion);
+        PackageIdentity identity = new(packageId, packageVersion);
 
         IPackageSearchMetadata? result = await metadataResource.GetMetadataAsync(identity, cacheContext, NullLogger.Instance, cancellationToken);
 
@@ -247,7 +247,7 @@ public class PackageVersionService : IPackageVersionService
             .ToDictionary(m => m.PackageVersion);
 
         Dictionary<NuGetVersion, PackageVersionListingInfo> output =
-            new Dictionary<NuGetVersion, PackageVersionListingInfo>(capacity: packageVersions.Count);
+            new(capacity: packageVersions.Count);
 
         foreach (NuGetVersion version in packageVersions.Distinct())
         {
@@ -285,9 +285,11 @@ public class PackageVersionService : IPackageVersionService
             await metadataResource.GetMetadataAsync(packageId, includePrerelease: includePreReleaseVersions, includeUnlisted: true,
                 cacheContext, NullLogger.Instance, cancellationToken);
 
-        List<(NuGetVersion Version, bool IsListed)> metadata = results
-            .Select(r => (r.Identity.Version, r.IsListed))
-            .ToList();
+        List<(NuGetVersion Version, bool IsListed)> metadata =
+        [
+            .. results
+                .Select(r => (r.Identity.Version, r.IsListed))
+        ];
 
         return metadata;
     }

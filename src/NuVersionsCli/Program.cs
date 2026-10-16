@@ -29,13 +29,13 @@ Cli.Ext.ConfigureServices(services =>
         .AddKeyedSingleton<IPackageVersionDeleter, SdkPackageVersionDeleter>("sdk")
         // Each composing service receives its keyed backend; both in-box backends detect 429
         // themselves, so the fail-fast state machine lives inside the services.
-        .AddKeyedSingleton<IPackageDelistService>("http", static (serviceProvider, _) =>
-            new PackageDelistService(
+        .AddKeyedSingleton<IPackageUnlistService>("http", static (serviceProvider, _) =>
+            new PackageUnlistService(
                 serviceProvider.GetRequiredService<IPackageVersionService>(),
                 serviceProvider.GetRequiredService<IPackageAvailabilityDetector>(),
                 serviceProvider.GetRequiredKeyedService<IPackageVersionDeleter>("http")))
-        .AddKeyedSingleton<IPackageDelistService>("sdk", static (serviceProvider, _) =>
-            new NetSdkPackageDelistService(
+        .AddKeyedSingleton<IPackageUnlistService>("sdk", static (serviceProvider, _) =>
+            new NetSdkPackageUnlistService(
                 serviceProvider.GetRequiredService<IPackageVersionService>(),
                 serviceProvider.GetRequiredService<IPackageAvailabilityDetector>(),
                 serviceProvider.GetRequiredKeyedService<IPackageVersionDeleter>("sdk")))
@@ -48,7 +48,7 @@ Cli.Ext.ConfigureServices(services =>
     services.AddSingleton(configuration);
 });
 
-return await Cli.RunAsync<NuVersionsCommand>(args, new CliSettings
+return await Cli.RunAsync<RootCommand>(args, new CliSettings
 {
     EnableDefaultExceptionHandler = true,
     EnableSuggestDirective = true,

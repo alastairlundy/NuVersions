@@ -29,7 +29,7 @@ namespace NuVersionsLib;
 /// <see cref="DelistPlanning.Partition"/>, merging bucket and backend outcomes into one outcome per
 /// requested version, and the fail-fast rate-limit rule.
 /// </remarks>
-public class PackageDelistService : IPackageDelistService
+public class PackageUnlistService : IPackageUnlistService
 {
     private readonly IPackageVersionService _packageVersionService;
     private readonly IPackageAvailabilityDetector _packageAvailabilityDetector;
@@ -41,7 +41,7 @@ public class PackageDelistService : IPackageDelistService
     /// <param name="packageVersionService">Service used to enumerate and check package versions.</param>
     /// <param name="packageAvailabilityDetector">Detector used to verify the package exists on the server.</param>
     /// <param name="versionDeleter">The per-version delete backend to dispatch to-delist versions through.</param>
-    public PackageDelistService(IPackageVersionService packageVersionService,
+    public PackageUnlistService(IPackageVersionService packageVersionService,
         IPackageAvailabilityDetector packageAvailabilityDetector,
         IPackageVersionDeleter versionDeleter)
     {
@@ -63,7 +63,7 @@ public class PackageDelistService : IPackageDelistService
     /// <param name="includeZeroMajorVersions">When true, stable versions with Major == 0 are also unlisted alongside prerelease versions.</param>
     /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
     /// <returns>An asynchronous sequence containing one <see cref="PackageVersionOutcome"/> per requested version.</returns>
-    public async IAsyncEnumerable<PackageVersionOutcome> RequestPackageDelistingAsync(
+    public async IAsyncEnumerable<PackageVersionOutcome> RequestPackageUnlistingAsync(
         string nugetApiUrl, string nugetApiKey, string packageId,
         bool includeZeroMajorVersions = false,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
@@ -71,7 +71,7 @@ public class PackageDelistService : IPackageDelistService
         NuGetVersion[] versionsToDelist = await _packageVersionService.GetPrereleasePackageVersionsAsync
             (nugetApiUrl, nugetApiKey, packageId, includeZeroMajorVersions, cancellationToken);
 
-        IAsyncEnumerable<PackageVersionOutcome> result = RequestPackageDelistingAsync(nugetApiUrl,
+        IAsyncEnumerable<PackageVersionOutcome> result = RequestPackageUnlistingAsync(nugetApiUrl,
             nugetApiKey, packageId, versionsToDelist, cancellationToken);
 
         await foreach (PackageVersionOutcome outcome in result)
@@ -101,7 +101,7 @@ public class PackageDelistService : IPackageDelistService
     /// <see cref="PackageVersionStatus.NotAttempted"/> rather than <see cref="PackageVersionStatus.Failed"/>.
     /// </para>
     /// </remarks>
-    public async IAsyncEnumerable<PackageVersionOutcome> RequestPackageDelistingAsync(string nugetApiUrl,
+    public async IAsyncEnumerable<PackageVersionOutcome> RequestPackageUnlistingAsync(string nugetApiUrl,
         string nugetApiKey, string packageId,
         IList<NuGetVersion> versions, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -114,7 +114,7 @@ public class PackageDelistService : IPackageDelistService
 
         if(!doesPackageExist)
             throw new ArgumentException(string.Format(Resources.Exceptions_Package_NotFoundOnServer, packageId, nugetApiUrl), nameof(packageId));
-        
+
         IDictionary<NuGetVersion, PackageVersionListingInfo> listingInfo =
             await _packageVersionService.CheckPackageVersionsListedAsync(nugetApiUrl, nugetApiKey, packageId,
                 true, versions, cancellationToken);

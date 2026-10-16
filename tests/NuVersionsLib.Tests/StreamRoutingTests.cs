@@ -20,11 +20,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using NuGet.Versioning;
 using NuVersionsCli;
-using NuVersionsLib;
 using NuVersionsLib.Abstractions;
 using NuVersionsLib.Detectors;
 using NuVersionsLib.Models;
-using TUnit.Core;
 
 namespace NuVersionsLib.Tests;
 
@@ -121,7 +119,7 @@ internal static class UnlistCommandHarness
             listingInfo ?? new Dictionary<NuGetVersion, PackageVersionListingInfo>()));
         // RunAsync resolves the keyed delisting service before it branches into the dry-run path,
         // so even a dry run needs an "http" registration to exist.
-        services.AddKeyedSingleton<IPackageDelistService, UnusedDelistService>("http");
+        services.AddKeyedSingleton<IPackageUnlistService, UnusedDelistService>("http");
 
         UnlistCommand command = new(new ConfigurationBuilder().Build(), services.BuildServiceProvider())
         {
@@ -208,7 +206,7 @@ internal sealed class ScriptedVersionService(
         string packageId, CancellationToken cancellationToken)
         => throw new NotSupportedException("ScriptedVersionService does not script enumeration.");
 
-    public Task<bool> IsPackageVersionDelistedAsync(string nugetApiUrl, string nugetApiKey, string packageId,
+    public Task<bool> IsPackageVersionUnlistedAsync(string nugetApiUrl, string nugetApiKey, string packageId,
         bool includePreReleaseVersions, NuGetVersion packageVersion, CancellationToken cancellationToken)
         => throw new NotSupportedException("ScriptedVersionService does not script delisting checks.");
 }
@@ -217,14 +215,14 @@ internal sealed class ScriptedVersionService(
 /// A delisting service that must never be invoked: the dry-run path resolves it from the container
 /// but performs no dispatch, so any call is a contract violation.
 /// </summary>
-internal sealed class UnusedDelistService : IPackageDelistService
+internal sealed class UnusedDelistService : IPackageUnlistService
 {
-    public IAsyncEnumerable<PackageVersionOutcome> RequestPackageDelistingAsync(string nugetApiUrl,
+    public IAsyncEnumerable<PackageVersionOutcome> RequestPackageUnlistingAsync(string nugetApiUrl,
         string nugetApiKey, string packageName, bool includeZeroMajorVersions = false,
         CancellationToken cancellationToken = default)
         => throw new InvalidOperationException("A dry run must not dispatch delisting requests.");
 
-    public IAsyncEnumerable<PackageVersionOutcome> RequestPackageDelistingAsync(string nugetApiUrl,
+    public IAsyncEnumerable<PackageVersionOutcome> RequestPackageUnlistingAsync(string nugetApiUrl,
         string nugetApiKey, string packageName, IList<NuGetVersion> versions,
         CancellationToken cancellationToken)
         => throw new InvalidOperationException("A dry run must not dispatch delisting requests.");

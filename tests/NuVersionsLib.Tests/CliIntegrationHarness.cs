@@ -21,7 +21,6 @@ using DotMake.CommandLine;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using NuVersionsCli;
-using NuVersionsLib;
 using NuVersionsLib.Abstractions;
 using NuVersionsLib.Detectors;
 
@@ -92,7 +91,7 @@ internal static class CliIntegrationHarness
             Console.SetError(stderr);
 #pragma warning restore TUnit0055
 
-            int exitCode = await Cli.RunAsync<NuVersionsCommand>([subcommand, ..args], Settings);
+            int exitCode = await Cli.RunAsync<RootCommand>([subcommand, ..args], Settings);
 
             return new CommandRun(exitCode, stdout.ToString(), stderr.ToString());
         }
@@ -131,13 +130,13 @@ internal static class CliIntegrationHarness
             .AddSingleton<IPackageVersionService, PackageVersionService>()
             .AddKeyedSingleton<IPackageVersionDeleter, HttpPackageVersionDeleter>("http")
             .AddKeyedSingleton<IPackageVersionDeleter, SdkPackageVersionDeleter>("sdk")
-            .AddKeyedSingleton<IPackageDelistService>("http", static (serviceProvider, _) =>
-                new PackageDelistService(
+            .AddKeyedSingleton<IPackageUnlistService>("http", static (serviceProvider, _) =>
+                new PackageUnlistService(
                     serviceProvider.GetRequiredService<IPackageVersionService>(),
                     serviceProvider.GetRequiredService<IPackageAvailabilityDetector>(),
                     serviceProvider.GetRequiredKeyedService<IPackageVersionDeleter>("http")))
-            .AddKeyedSingleton<IPackageDelistService>("sdk", static (serviceProvider, _) =>
-                new NetSdkPackageDelistService(
+            .AddKeyedSingleton<IPackageUnlistService>("sdk", static (serviceProvider, _) =>
+                new NetSdkPackageUnlistService(
                     serviceProvider.GetRequiredService<IPackageVersionService>(),
                     serviceProvider.GetRequiredService<IPackageAvailabilityDetector>(),
                     serviceProvider.GetRequiredKeyedService<IPackageVersionDeleter>("sdk")))

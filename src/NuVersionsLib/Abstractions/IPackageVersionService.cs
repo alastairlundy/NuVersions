@@ -72,7 +72,7 @@ public interface IPackageVersionService
     /// <returns>An array of <see cref="NuGetVersion"/> objects matching the specified criteria.</returns>
     Task<NuGetVersion[]> GetAllPackageVersionsAsync(string nugetApiUrl, string nugetApiKey,
         string packageId, CancellationToken cancellationToken);
-    
+
     /// <summary>
     /// Determines whether a specific package version has been unlisted from the NuGet repository.
     /// </summary>
@@ -84,7 +84,7 @@ public interface IPackageVersionService
     /// <param name="packageVersion">The specific version of the package to verify against.</param>
     /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
     /// <returns>A boolean value indicating whether the specified package version is unlisted. Returns true if unlisted, false otherwise.</returns>
-    Task<bool> IsPackageVersionDelistedAsync(string nugetApiUrl, string nugetApiKey, string packageId, bool includePreReleaseVersions,
+    Task<bool> IsPackageVersionUnlistedAsync(string nugetApiUrl, string nugetApiKey, string packageId, bool includePreReleaseVersions,
         NuGetVersion packageVersion, CancellationToken cancellationToken);
 
     /// <summary>

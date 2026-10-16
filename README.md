@@ -1,6 +1,6 @@
 # NuVersions
 
-A CLI to show how a NuGet package's versions are listed on a NuGet server, and to unlist (delist) versions of the package.
+A CLI to show how a NuGet package's versions are listed on a NuGet server, and to unlist versions of the package.
 
 [![NuGet latest version](https://img.shields.io/nuget/v/NuVersions.svg)][nuget]
 [![NuGet downloads](https://img.shields.io/nuget/dt/NuVersions.svg)][nuget]
@@ -22,7 +22,7 @@ A CLI to show how a NuGet package's versions are listed on a NuGet server, and t
 - Configure NuGet API Key and Server URL via environment variables.
 
 > **Renamed from PrereleaseDelist:** the `prerelease-delist` tool is now `nuversions`, with
-> today's unlist behavior available as `nuversions unlist`. The environment variable prefix is
+> today's unlist behaviour available as `nuversions unlist`. The environment variable prefix is
 > now `NUVERSIONS_`, the old `NUGET_*` generic fallbacks are unchanged, and `show` is the first
 > sibling command. See the `0.3.0` entry in the [changelog](CHANGELOG.md).
 
@@ -54,7 +54,7 @@ Self-contained, single-file binaries are attached to each GitHub Release for exa
 
 - **No .NET installation is required** — these binaries run the HTTP backend out of the box.
 - The `sdk` backend still requires a host .NET SDK installation, which packaging cannot change; use the `dotnet tool` channel with an SDK installed if you need `--backend sdk`.
-- Each release ships SHA-256 checksums: one checksum file per artifact plus a combined `sha256.txt` listing every pair, verifiable with `sha256sum -c`.
+- Each release ships SHA-256 checksums: one checksum file per artefact plus a combined `sha256.txt` listing every pair, verifiable with `sha256sum -c`.
 - musl/Alpine users are served by the `dotnet tool` channel; no `linux-musl-*` RID is built.
 
 ### Build
@@ -71,20 +71,20 @@ The `nuversions` command has subcommands, one per operation.
 nuversions [subcommand] [options]
 ```
 
-| Subcommand | Reads or writes | What it does |
-|------------|-----------------|--------------|
+| Subcommand | Reads or writes | What it does                                                                               |
+|------------|-----------------|--------------------------------------------------------------------------------------------|
 | `show`     | read-only       | Print every version of a package with whether it is listed or unlisted. No API key needed. |
-| `unlist`   | write           | Unlist (delist) specified versions, or all pre-release versions, of a package. |
+| `unlist`   | write           | Unlist specified versions, or all pre-release versions, of a package.                      |
 
 Running `nuversions` with no subcommand prints the command hierarchy.
 
 ### Shared options
 
-| Name           | Type             | Required | Default                               | Description |
-|----------------|------------------|----------|---------------------------------------|-------------|
-| `--package-id` | string           | yes      | —                                     | The ID of the package, e.g. `MyPackage`. |
+| Name           | Type             | Required | Default                               | Description                                                                                                                                                               |
+|----------------|------------------|----------|---------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `--package-id` | string           | yes      | —                                     | The ID of the package, e.g. `MyPackage`.                                                                                                                                  |
 | `--server-url` | string           | no       | `https://api.nuget.org/v3/index.json` | The NuGet server's V3 service index URL. Useful for third-party NuGet servers. Falls back to the `NUVERSIONS_NuGetServerUrl` or `NUGET_SERVER_URL` environment variables. |
-| `--output`     | `text` \| `json` | no       | `text`                                | Output format for stdout: human-readable text, or newline-delimited JSON (one object per version). stderr is unaffected in both modes. |
+| `--output`     | `text` \| `json` | no       | `text`                                | Output format for stdout: human-readable text, or newline-delimited JSON (one object per version). stderr is unaffected in both modes.                                    |
 
 ### `show`
 
@@ -112,19 +112,19 @@ attempt it just made.
 nuversions unlist --package-id "MyPackage" --api-key "myApiKey" "1.0.0-alpha.1" "1.0.0-alpha.2"
 ```
 
-| Name                    | Type            | Required                            | Default | Description |
-|-------------------------|-----------------|-------------------------------------|---------|-------------|
-| `versions` (argument)   | string[]        | Yes (unless `--delist-all` is used) | —       | One or more version strings to unlist (delist), passed positionally — there is no `--versions` option. Only version strings starting with a digit are considered; others are ignored, except a token starting with `-`, which is rejected as an unknown option (see [Exit codes](#exit-codes)). Pre-release and stable versions are both accepted; to unlist every pre-release version at once, see `--delist-all`. |
-| `--package-id`          | string          | Yes                                 | —       | The ID of the package to unlist versions of, e.g. `MyPackage`. |
-| `--api-key`             | string          | Yes*                                | —       | The NuGet API key to authenticate with. If omitted, the CLI falls back to the `NUVERSIONS_NuGetApiKey` or `NUGET_API_KEY` environment variables. |
-| `--server-url`          | string          | No                                  | `https://api.nuget.org/v3/index.json` | The NuGet server's V3 service index URL. Useful for third-party NuGet servers. Falls back to the `NUVERSIONS_NuGetServerUrl` or `NUGET_SERVER_URL` environment variables. |
-| `--delist-all`          | boolean         | No                                  | `false` | Unlist all pre-release versions of the package instead of the explicitly listed `versions`. |
-| `--include-zero-major`  | boolean         | No                                  | `false` | With `--delist-all`, also include stable `0.x` (Major == 0) versions. |
-| `--use-strict-parsing`  | boolean         | No                                  | `true`  | When `true`, an invalid version string causes an error. When `false`, invalid version strings are silently skipped. |
-| `--backend`             | `http` \| `sdk` | No                                  | `http`  | Which delisting backend to use: the V3 `http` API, or the .NET SDK's package deprecation/delist support (`sdk`). |
-| `--non-interactive`     | boolean         | No                                  | `false` | Print one machine-friendly `Version=<version> Status=<kebab-case>` line per version on stdout and exit non-zero if any version failed. Useful in CI. |
-| `--dry-run`             | boolean         | No                                  | `false` | Print the unlist plan without sending any delete request. Works without an API key. Exits only with `0`, `1`, or `2` — see [Dry runs](#dry-runs). |
-| `--output`              | `text` \| `json` | No                                 | `text`  | Output format for stdout: human-readable text, or newline-delimited JSON (one object per version). stderr is unaffected in both modes. |
+| Name                   | Type             | Required                            | Default                               | Description                                                                                                                                                                                                                                                                                                                                                                                                         |
+|------------------------|------------------|-------------------------------------|---------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `versions` (argument)  | string[]         | Yes (unless `--delist-all` is used) | —                                     | One or more version strings to unlist (delist), passed positionally — there is no `--versions` option. Only version strings starting with a digit are considered; others are ignored, except a token starting with `-`, which is rejected as an unknown option (see [Exit codes](#exit-codes)). Pre-release and stable versions are both accepted; to unlist every pre-release version at once, see `--delist-all`. |
+| `--package-id`         | string           | Yes                                 | —                                     | The ID of the package to unlist versions of, e.g. `MyPackage`.                                                                                                                                                                                                                                                                                                                                                      |
+| `--api-key`            | string           | Yes*                                | —                                     | The NuGet API key to authenticate with. If omitted, the CLI falls back to the `NUVERSIONS_NuGetApiKey` or `NUGET_API_KEY` environment variables.                                                                                                                                                                                                                                                                    |
+| `--server-url`         | string           | No                                  | `https://api.nuget.org/v3/index.json` | The NuGet server's V3 service index URL. Useful for third-party NuGet servers. Falls back to the `NUVERSIONS_NuGetServerUrl` or `NUGET_SERVER_URL` environment variables.                                                                                                                                                                                                                                           |
+| `--delist-all`         | boolean          | No                                  | `false`                               | Unlist all pre-release versions of the package instead of the explicitly listed `versions`.                                                                                                                                                                                                                                                                                                                         |
+| `--include-zero-major` | boolean          | No                                  | `false`                               | With `--delist-all`, also include stable `0.x` (Major == 0) versions.                                                                                                                                                                                                                                                                                                                                               |
+| `--use-strict-parsing` | boolean          | No                                  | `true`                                | When `true`, an invalid version string causes an error. When `false`, invalid version strings are silently skipped.                                                                                                                                                                                                                                                                                                 |
+| `--backend`            | `http` \| `sdk`  | No                                  | `http`                                | Which delisting backend to use: the V3 `http` API, or the .NET SDK's package deprecation/delist support (`sdk`).                                                                                                                                                                                                                                                                                                    |
+| `--non-interactive`    | boolean          | No                                  | `false`                               | Print one machine-friendly `Version=<version> Status=<kebab-case>` line per version on stdout and exit non-zero if any version failed. Useful in CI.                                                                                                                                                                                                                                                                |
+| `--dry-run`            | boolean          | No                                  | `false`                               | Print the unlist plan without sending any delete request. Works without an API key. Exits only with `0`, `1`, or `2` — see [Dry runs](#dry-runs).                                                                                                                                                                                                                                                                   |
+| `--output`             | `text` \| `json` | No                                  | `text`                                | Output format for stdout: human-readable text, or newline-delimited JSON (one object per version). stderr is unaffected in both modes.                                                                                                                                                                                                                                                                              |
 
 \* Required either on the command line or via environment variable (see [Configuration](#configuration) below), except under `--dry-run`, where no API key is needed at all.
 
@@ -156,11 +156,11 @@ unlisted.
 
 Each requested version lands in one of three buckets, printed as `Version=<version> Bucket=<bucket>`:
 
-| Bucket            | Meaning                                                                       |
-|-------------------|-------------------------------------------------------------------------------|
-| `would-unlist`    | The version exists and is listed — a real run would delete it.                |
-| `already-unlisted`| The version exists but is unlisted.                                           |
-| `not-on-server`   | The server has no record of the version (a typo, or a version never published).|
+| Bucket             | Meaning                                                                         |
+|--------------------|---------------------------------------------------------------------------------|
+| `would-unlist`     | The version exists and is listed — a real run would unlist it.                  |
+| `already-unlisted` | The version exists but is unlisted.                                             |
+| `not-on-server`    | The server has no record of the version (a typo, or a version never published). |
 
 Exit is bucket-aware: `0` only when every requested version exists on the server, `1` when any version is `not-on-server`, and `2` when the package itself does not exist on the server. Dry runs exit only with `0`, `1`, or `2` — never `3` or `4`.
 
@@ -180,12 +180,13 @@ Version=1.0.0-alpha.2 Bucket=already-unlisted
 `--output json` switches stdout to newline-delimited JSON (NDJSON): one object per requested version, with exactly three fields in a fixed order — no envelope, no array wrapper, no additional fields:
 
 ```json
-{"package":"MyPackage","version":"1.0.0-alpha.1","status":"unlisted"}
+[{"package":"MyPackage","version":"1.0.0-alpha.1","status":"unlisted"},
 {"package":"MyPackage","version":"1.0.0-alpha.2","status":"not-on-server"}
+]
 ```
 
 - `package` — the package id exactly as supplied to the run.
-- `version` — the normalized version string.
+- `version` — the normalised version string.
 - `status` — a kebab-case member of the subcommand's status vocabulary in [Unlist version states](#unlist-version-states) or in [`show`](#show). `show` reports the listed/unlisted facts; `unlist` reports what its attempt did.
 
 stderr is unchanged by this mode: every error and diagnostic still prints there as human-readable text. In all modes, results, summaries, dry-run plans, and `show` listings print to stdout; errors and diagnostics print to stderr; the API key is never written to any stream. When both are set, `--output json` takes precedence over `--non-interactive` for stdout.
@@ -194,16 +195,16 @@ stderr is unchanged by this mode: every error and diagnostic still prints there 
 
 The CLI exits only with these codes:
 
-| Code  | Meaning                                                                                                                                   |
-|-------|--------------------------------------------------------------------------------------------------------------------------------------------|
-| `0`   | Success — every requested version was unlisted or was already unlisted (for `show`: the package exists and every version's state was reported). |
-| `1`   | At least one version failed, including a version the server does not have (`not-on-server`); also command-line errors the argument parser rejects (see below). |
+| Code  | Meaning                                                                                                                                                                                                                                                                                                                                                                   |
+|-------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `0`   | Success — every requested version was unlisted or was already unlisted (for `show`: the package exists and every version's state was reported).                                                                                                                                                                                                                           |
+| `1`   | At least one version failed, including a version the server does not have (`not-on-server`); also command-line errors the argument parser rejects (see below).                                                                                                                                                                                                            |
 | `2`   | Validation failure detected by the CLI itself — an unknown option, an empty `--package-id`, an invalid `--backend` or `--output` value, no version strings without `--delist-all`, a missing API key on a real run, a package that does not exist on the server, or an invalid version string under strict parsing. For `show`, the package does not exist on the server. |
-| `3`   | The server rate-limited the run; the run stopped fail-fast and reported the results so far.                                                 |
-| `4`   | The run was cancelled; the remaining versions were not attempted.                                                                          |
-| `130` | Interrupted with Ctrl-C.                                                                                                                   |
+| `3`   | The server rate-limited the run; the run stopped fail-fast and reported the results so far.                                                                                                                                                                                                                                                                               |
+| `4`   | The run was cancelled; the remaining versions were not attempted.                                                                                                                                                                                                                                                                                                         |
+| `130` | Interrupted with Ctrl-C.                                                                                                                                                                                                                                                                                                                                                  |
 
-Command lines that the argument parser rejects outright — a missing required option such as `--package-id`, or an option missing its value — never reach that validation: the parser writes its message to stderr and the process exits `1` without contacting the server. An unknown option is a different case: the parser hands it to the `versions` position, where the CLI detects it, writes `Error: Unrecognized option: '--typo'.` to stderr and exits `2` — a typo'd option is never silently dropped as a non-version string.
+Command lines that the argument parser rejects outright — a missing required option such as `--package-id`, or an option missing its value — never reach that validation: the parser writes its message to stderr and the process exits `1` without contacting the server. An unknown option is a different case: the parser hands it to the `versions` position, where the CLI detects it, writes `Error: Unrecognized option: '--typo'.` to stderr and exits `2` — a typo-ed option is never silently dropped as a non-version string.
 
 When a run produces more than one of these codes, the most severe wins: `3` beats `4`, which beats `1`, which beats `0`. `unlist --dry-run` reuses `0`, `1`, and `2` only.
 
@@ -219,10 +220,10 @@ nuversions unlist --package-id "MyPackage" --api-key "myApiKey" [env:NuGetServer
 
 Options can also be satisfied from environment variables instead of the command line. Precedence is: explicit `--api-key`/`--server-url` command-line options first, then `NUVERSIONS_`-prefixed environment variables, then generic `NUGET_*` environment variables, then built-in defaults.
 
-| Option       | `NUVERSIONS_` env var             | Generic env var    |
-|--------------|-----------------------------------|--------------------|
-| `--api-key`  | `NUVERSIONS_NuGetApiKey`          | `NUGET_API_KEY`    |
-| `--server-url` | `NUVERSIONS_NuGetServerUrl`     | `NUGET_SERVER_URL` |
+| Option         | `NUVERSIONS_` env var       | Generic env var    |
+|----------------|-----------------------------|--------------------|
+| `--api-key`    | `NUVERSIONS_NuGetApiKey`    | `NUGET_API_KEY`    |
+| `--server-url` | `NUVERSIONS_NuGetServerUrl` | `NUGET_SERVER_URL` |
 
 ```bash
 # bash

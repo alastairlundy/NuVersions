@@ -17,10 +17,8 @@
  */
 
 using NuGet.Versioning;
-using NuVersionsLib;
 using NuVersionsLib.Abstractions;
 using NuVersionsLib.Models;
-using TUnit.Core;
 
 namespace NuVersionsLib.Tests;
 
@@ -57,7 +55,7 @@ public class PackageDelistServiceTests
 
         ScriptedDeleter deleter = new();
         deleter.Enqueue(PackageVersionStatus.RateLimited);
-        PackageDelistService service = CreateService(listingInfo, packageExists: true, deleter);
+        PackageUnlistService service = CreateService(listingInfo, packageExists: true, deleter);
 
         List<PackageVersionOutcome> outcomes = await CollectAsync(service, [first, second, third]);
 
@@ -90,7 +88,7 @@ public class PackageDelistServiceTests
 
         // No statuses scripted: any dispatch would throw inside the fake and fail the test loudly.
         ScriptedDeleter deleter = new();
-        PackageDelistService service = CreateService(listingInfo, packageExists: true, deleter);
+        PackageUnlistService service = CreateService(listingInfo, packageExists: true, deleter);
 
         List<PackageVersionOutcome> outcomes =
             await CollectAsync(service, [firstUnlisted, absent, secondUnlisted]);
@@ -125,7 +123,7 @@ public class PackageDelistServiceTests
         ScriptedDeleter deleter = new();
         deleter.Enqueue(PackageVersionStatus.Unlisted);
         deleter.Enqueue(PackageVersionStatus.Unlisted);
-        PackageDelistService service = CreateService(listingInfo, packageExists: true, deleter);
+        PackageUnlistService service = CreateService(listingInfo, packageExists: true, deleter);
 
         List<PackageVersionOutcome> outcomes = await CollectAsync(
             service, [absent, unlisted, firstListed, secondListed]);
@@ -152,14 +150,14 @@ public class PackageDelistServiceTests
         };
 
         ScriptedDeleter deleter = new();
-        PackageDelistService service = CreateService(listingInfo, packageExists: false, deleter);
+        PackageUnlistService service = CreateService(listingInfo, packageExists: false, deleter);
 
         List<PackageVersionOutcome> outcomes = [];
         ArgumentException? caught = null;
 
         try
         {
-            await foreach (PackageVersionOutcome outcome in service.RequestPackageDelistingAsync(
+            await foreach (PackageVersionOutcome outcome in service.RequestPackageUnlistingAsync(
                 ServerUrl, ApiKey, PackageId, [version], CancellationToken.None))
             {
                 outcomes.Add(outcome);
@@ -192,18 +190,18 @@ public class PackageDelistServiceTests
         PackageVersion = version, IsListed = false, PackageVersionExists = true
     };
 
-    private static PackageDelistService CreateService(
+    private static PackageUnlistService CreateService(
         IDictionary<NuGetVersion, PackageVersionListingInfo> listingInfo, bool packageExists,
         IPackageVersionDeleter deleter)
         => new(new ScriptedVersionService(listingInfo),
             new FixedAvailabilityDetector(packageExists), deleter);
 
     private static async Task<List<PackageVersionOutcome>> CollectAsync(
-        PackageDelistService service, IList<NuGetVersion> versions)
+        PackageUnlistService service, IList<NuGetVersion> versions)
     {
         List<PackageVersionOutcome> outcomes = [];
 
-        await foreach (PackageVersionOutcome outcome in service.RequestPackageDelistingAsync(
+        await foreach (PackageVersionOutcome outcome in service.RequestPackageUnlistingAsync(
             ServerUrl, ApiKey, PackageId, versions, CancellationToken.None))
         {
             outcomes.Add(outcome);

@@ -1,38 +1,10 @@
-/*
-    NuVersions - Delist (unlist) NuGet package versions from a NuGet server
-    Copyright (C) 2026 Alastair Lundy
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-     any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
-
-namespace NuVersionsCli;
-
-/// <summary>
-/// Describes a single options validation failure.
-/// Any validation failure maps to the usage exit code.
-/// </summary>
-/// <param name="Field">The option field that failed validation.</param>
-/// <param name="Message">Human-readable description of the failure.</param>
-public sealed record DelistOptionsValidationFailure(string Field, string Message);
+namespace NuVersionsCli.Models;
 
 /// <summary>
 /// Resolved, validated CLI options. Pure logic only: no console access,
 /// no service resolution, no <c>IConfiguration</c> or environment access.
-/// Callers prefetch configuration values as plain strings and pass them in,
-/// so unit tests can drive every branch. Hence the dedicated options type.
 /// </summary>
-public sealed record DelistOptions
+public sealed record UnlistOptions
 {
     /// <summary>
     /// Built-in default when no server URL is supplied at any level.
@@ -78,6 +50,7 @@ public sealed record DelistOptions
     /// <c>NUGET_SERVER_URL</c> variable, then the built-in default.
     /// Whitespace counts as unset. Matches README Configuration section.
     /// </summary>
+    //TODO: Move to more relevant location/owner.
     public static string ResolveServerUrl(string? optionValue, string? prefixedValue, string? genericValue)
     {
         if (!string.IsNullOrWhiteSpace(optionValue))
@@ -106,6 +79,7 @@ public sealed record DelistOptions
     /// validation failure unless dry-run mode skips it).
     /// Empty counts as unset. Matches README Configuration section.
     /// </summary>
+    //TODO: Move to more relevant location/owner.
     public static string? ResolveApiKey(string? optionValue, string? prefixedValue, string? genericValue)
     {
         if (!string.IsNullOrEmpty(optionValue))
@@ -127,11 +101,11 @@ public sealed record DelistOptions
     }
 
     /// <summary>
-    /// Builds a fully-resolved <see cref="DelistOptions"/> from bound values plus
+    /// Builds a fully-resolved <see cref="UnlistOptions"/> from bound values plus
     /// prefetched configuration strings. All inputs are plain values so the type
     /// stays pure (no configuration or environment access inside).
     /// </summary>
-    public static DelistOptions Create(
+    public static UnlistOptions Create(
         string? packageId,
         IEnumerable<string>? versions,
         string? apiKeyOption,
@@ -148,7 +122,7 @@ public sealed record DelistOptions
         bool dryRun,
         string? outputMode)
     {
-        return new DelistOptions
+        return new UnlistOptions
         {
             PackageId = packageId ?? string.Empty,
             Versions = versions?.ToArray() ?? [],
@@ -169,20 +143,20 @@ public sealed record DelistOptions
     /// Dry-run mode skips the API-key requirement (delete requests are the only
     /// credential-bearing path); a real run requires it.
     /// </summary>
-    public IReadOnlyList<DelistOptionsValidationFailure> Validate()
+    public IReadOnlyList<UnlistOptionsValidationFailure> Validate()
     {
-        List<DelistOptionsValidationFailure> failures = [];
+        List<UnlistOptionsValidationFailure> failures = [];
 
         if (string.IsNullOrWhiteSpace(PackageId))
         {
-            failures.Add(new DelistOptionsValidationFailure(
+            failures.Add(new UnlistOptionsValidationFailure(
                 nameof(PackageId),
                 "Package id is required."));
         }
 
         if (string.IsNullOrWhiteSpace(ServerUrl))
         {
-            failures.Add(new DelistOptionsValidationFailure(
+            failures.Add(new UnlistOptionsValidationFailure(
                 nameof(ServerUrl),
                 "Server URL must not be empty."));
         }
@@ -190,21 +164,21 @@ public sealed record DelistOptions
         if (!string.Equals(Backend, "http", StringComparison.OrdinalIgnoreCase) &&
             !string.Equals(Backend, "sdk", StringComparison.OrdinalIgnoreCase))
         {
-            failures.Add(new DelistOptionsValidationFailure(
+            failures.Add(new UnlistOptionsValidationFailure(
                 nameof(Backend),
                 "Invalid backend value. Valid values are: http, sdk."));
         }
 
-        if (!DelistAllVersions && (Versions is null || Versions.Count == 0))
+        if (!DelistAllVersions && Versions.Count == 0)
         {
-            failures.Add(new DelistOptionsValidationFailure(
+            failures.Add(new UnlistOptionsValidationFailure(
                 nameof(Versions),
                 "At least one version string is required unless --delist-all is set."));
         }
 
         if (!DryRun && string.IsNullOrEmpty(ApiKey))
         {
-            failures.Add(new DelistOptionsValidationFailure(
+            failures.Add(new UnlistOptionsValidationFailure(
                 nameof(ApiKey),
                 "API key is required for a real run (dry-run mode skips this requirement)."));
         }
@@ -212,7 +186,7 @@ public sealed record DelistOptions
         if (!string.Equals(OutputMode, "text", StringComparison.OrdinalIgnoreCase) &&
             !string.Equals(OutputMode, "json", StringComparison.OrdinalIgnoreCase))
         {
-            failures.Add(new DelistOptionsValidationFailure(
+            failures.Add(new UnlistOptionsValidationFailure(
                 nameof(OutputMode),
                 "Invalid output mode. Valid values are: text, json."));
         }

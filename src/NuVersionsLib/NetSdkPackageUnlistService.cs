@@ -21,13 +21,13 @@ using NuVersionsLib.Internal;
 namespace NuVersionsLib;
 
 /// <summary>
-/// This class is an alternative implementation for the <see cref="PackageDelistService"/> that uses .NET SDK CLI's nuget subcommand.
+/// This class is an alternative implementation for the <see cref="PackageUnlistService"/> that uses .NET SDK CLI's nuget subcommand.
 /// </summary>
 /// <remarks>
 /// <para>
 /// This backend passes the API key on the process command line, which is visible in process listings.
 /// This is inherent to the <c>dotnet nuget delete</c> command and cannot be avoided.
-/// Consider using the HTTP-based <see cref="PackageDelistService"/> where possible for improved security.
+/// Consider using the HTTP-based <see cref="PackageUnlistService"/> where possible for improved security.
 /// </para>
 /// <para>
 /// Per-version delete requests are dispatched through the injected <see cref="IPackageVersionDeleter"/>
@@ -36,7 +36,7 @@ namespace NuVersionsLib;
 /// backend outcomes into one outcome per requested version, and the fail-fast rate-limit rule.
 /// </para>
 /// </remarks>
-public class NetSdkPackageDelistService : IPackageDelistService
+public class NetSdkPackageUnlistService : IPackageUnlistService
 {
     private readonly IPackageVersionService _packageVersionService;
     private readonly IPackageAvailabilityDetector _packageAvailabilityDetector;
@@ -48,7 +48,7 @@ public class NetSdkPackageDelistService : IPackageDelistService
     /// <param name="packageVersionService">Service used to enumerate and check package versions.</param>
     /// <param name="packageAvailabilityDetector">Detector used to verify the package exists on the server.</param>
     /// <param name="versionDeleter">The per-version delete backend to dispatch to-delist versions through.</param>
-    public NetSdkPackageDelistService(IPackageVersionService packageVersionService,
+    public NetSdkPackageUnlistService(IPackageVersionService packageVersionService,
         IPackageAvailabilityDetector packageAvailabilityDetector,
         IPackageVersionDeleter versionDeleter)
     {
@@ -70,7 +70,7 @@ public class NetSdkPackageDelistService : IPackageDelistService
     /// <param name="includeZeroMajorVersions">When true, stable versions with Major == 0 are also unlisted alongside prerelease versions.</param>
     /// <param name="cancellationToken">A token that can be used to cancel the operation.</param>
     /// <returns>A sequence containing one <see cref="PackageVersionOutcome"/> per requested version.</returns>
-    public async IAsyncEnumerable<PackageVersionOutcome> RequestPackageDelistingAsync(
+    public async IAsyncEnumerable<PackageVersionOutcome> RequestPackageUnlistingAsync(
         string nugetApiUrl, string nugetApiKey,
         string packageId, bool includeZeroMajorVersions = false,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
@@ -79,7 +79,7 @@ public class NetSdkPackageDelistService : IPackageDelistService
             (nugetApiUrl, nugetApiKey, packageId, includeZeroMajorVersions, cancellationToken);
 
         IAsyncEnumerable<PackageVersionOutcome> delistResults =
-            RequestPackageDelistingAsync(nugetApiUrl, nugetApiKey, packageId, versionsToDelist, cancellationToken);
+            RequestPackageUnlistingAsync(nugetApiUrl, nugetApiKey, packageId, versionsToDelist, cancellationToken);
 
         await foreach (PackageVersionOutcome outcome in delistResults)
         {
@@ -108,7 +108,7 @@ public class NetSdkPackageDelistService : IPackageDelistService
     /// <see cref="PackageVersionStatus.NotAttempted"/> rather than <see cref="PackageVersionStatus.Failed"/>.
     /// </para>
     /// </remarks>
-    public async IAsyncEnumerable<PackageVersionOutcome> RequestPackageDelistingAsync(
+    public async IAsyncEnumerable<PackageVersionOutcome> RequestPackageUnlistingAsync(
         string nugetApiUrl, string nugetApiKey, string packageId, IList<NuGetVersion> versions,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -116,12 +116,12 @@ public class NetSdkPackageDelistService : IPackageDelistService
         ArgumentException.ThrowIfNullOrEmpty(nugetApiKey);
         ArgumentException.ThrowIfNullOrEmpty(packageId);
         ArgumentNullException.ThrowIfNull(versions);
-        
+
         bool doesPackageExists = await _packageAvailabilityDetector.CheckPackageExistsAsync(nugetApiUrl, packageId, cancellationToken);
 
         if(!doesPackageExists)
             throw new ArgumentException(string.Format(Resources.Exceptions_Package_NotFoundOnServer, packageId, nugetApiUrl), nameof(packageId));
-        
+
         IDictionary<NuGetVersion, PackageVersionListingInfo> listingInfo =
             await _packageVersionService.CheckPackageVersionsListedAsync(nugetApiUrl, nugetApiKey, packageId,
                 true, versions, cancellationToken);

@@ -19,9 +19,9 @@
 using System.ComponentModel;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
-using DotMake.CommandLine;
 using NuGet.Protocol.Core.Types;
 using NuGet.Versioning;
+using NuVersionsCli.Models;
 using NuVersionsLib.Models;
 
 namespace NuVersionsCli;
@@ -45,7 +45,7 @@ namespace NuVersionsCli;
 /// failure, 2 the package does not exist on the server, 130 Ctrl-C.
 /// </para>
 /// </remarks>
-[CliCommand(Name = "show", Parent = typeof(NuVersionsCommand),
+[CliCommand(Name = "show", Parent = typeof(RootCommand),
     Description = "Show whether each version of a NuGet package is listed or unlisted.")]
 public class ShowCommand
 {
@@ -70,7 +70,7 @@ public class ShowCommand
 
     [CliOption(Name = "--package-id", Required = true,
         Arity = CliArgumentArity.ExactlyOne)]
-    public string PackageId { get; set; } = null!;
+    public string PackageId { get; set; } = "";
 
     [CliOption(Name = "--server-url", Required = false)]
     public string? ServerUrl { get; set; }
@@ -80,8 +80,8 @@ public class ShowCommand
     /// object per version.
     /// </summary>
     [CliOption(Name = "--output", Required = false)]
-    [DefaultValue(DelistOptions.DefaultOutputMode)]
-    public string OutputMode { get; set; } = DelistOptions.DefaultOutputMode;
+    [DefaultValue(UnlistOptions.DefaultOutputMode)]
+    public string OutputMode { get; set; } = UnlistOptions.DefaultOutputMode;
 
     public async Task<int> RunAsync()
     {
@@ -95,11 +95,11 @@ public class ShowCommand
             !string.Equals(OutputMode, "json", StringComparison.OrdinalIgnoreCase))
         {
             await Console.Error.WriteLineAsync(
-                "Error: Invalid output mode. Valid values are: text, json.");
+                "Error: Invalid output mode. Valid values are: text, JSON.");
             return ExitUsage;
         }
 
-        string serverUrl = DelistOptions.ResolveServerUrl(ServerUrl,
+        string serverUrl = UnlistOptions.ResolveServerUrl(ServerUrl,
             _configuration["NuGetServerUrl"], _serverUrlGeneric);
 
         using CancellationTokenSource cancellationSource = new();
@@ -119,7 +119,7 @@ public class ShowCommand
             List<PackageVersionListingInfo> versions = [];
 
             await foreach (PackageVersionListingInfo info in versionService.EnumerateAllPackageVersionsAsync(
-                serverUrl, "show", PackageId, cancellationSource.Token))
+                               serverUrl, "show", PackageId, cancellationSource.Token))
             {
                 versions.Add(info);
             }
