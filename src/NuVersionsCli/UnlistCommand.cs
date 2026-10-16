@@ -23,6 +23,7 @@ using NuGet.Protocol.Core.Types;
 using NuGet.Versioning;
 using NuVersionsCli.Helpers;
 using NuVersionsCli.Models;
+using NuVersionsLib.Detectors.Abstractions;
 using NuVersionsLib.Models;
 
 // ReSharper disable ArgumentsStyleOther

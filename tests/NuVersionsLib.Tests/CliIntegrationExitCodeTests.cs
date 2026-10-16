@@ -22,6 +22,7 @@ using NuGet.Versioning;
 using NuVersionsCli;
 using NuVersionsLib.Abstractions;
 using NuVersionsLib.Detectors;
+using NuVersionsLib.Detectors.Abstractions;
 using NuVersionsLib.Models;
 
 namespace NuVersionsLib.Tests;

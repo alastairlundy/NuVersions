@@ -23,6 +23,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NuVersionsCli;
 using NuVersionsLib.Abstractions;
 using NuVersionsLib.Detectors;
+using NuVersionsLib.Detectors.Abstractions;
 
 namespace NuVersionsLib.Tests;
 

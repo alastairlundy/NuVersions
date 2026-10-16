@@ -18,6 +18,7 @@
 
 using CliInvoke.Extensions;
 using Microsoft.Extensions.DependencyInjection;
+using NuVersionsLib.Detectors.Abstractions;
 
 Cli.Ext.ConfigureServices(services =>
 {

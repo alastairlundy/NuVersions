@@ -1,4 +1,4 @@
-namespace NuVersionsCli;
+namespace NuVersionsCli.Models;
 
 internal enum DryRunBucket
 {

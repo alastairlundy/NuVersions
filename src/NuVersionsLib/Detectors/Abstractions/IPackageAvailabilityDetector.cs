@@ -1,4 +1,4 @@
-namespace NuVersionsLib.Detectors;
+namespace NuVersionsLib.Detectors.Abstractions;
 
 public interface IPackageAvailabilityDetector
 {
