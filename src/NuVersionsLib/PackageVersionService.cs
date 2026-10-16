@@ -17,6 +17,7 @@
  */
 
 using NuGet.Packaging.Core;
+using NuVersionsLib.Detectors.Abstractions;
 
 namespace NuVersionsLib;
 
@@ -52,7 +53,7 @@ public class PackageVersionService : IPackageVersionService
 
         SourceRepository repoInfo = GetRepoInfo(nugetApiUrl);
 
-        using var cacheContext = new SourceCacheContext();
+        using SourceCacheContext cacheContext = new SourceCacheContext();
 
         FindPackageByIdResource? resource = await repoInfo.GetResourceAsync<FindPackageByIdResource>(cancellationToken);
 
@@ -94,7 +95,7 @@ public class PackageVersionService : IPackageVersionService
 
         SourceRepository repoInfo = GetRepoInfo(nugetApiUrl);
 
-        using var cacheContext = new SourceCacheContext();
+        using SourceCacheContext cacheContext = new SourceCacheContext();
 
         FindPackageByIdResource? resource = await repoInfo.GetResourceAsync<FindPackageByIdResource>(cancellationToken);
 
@@ -191,7 +192,7 @@ public class PackageVersionService : IPackageVersionService
 
         SourceRepository repoInfo = GetRepoInfo(nugetApiUrl);
 
-        using var cacheContext = new SourceCacheContext();
+        using SourceCacheContext cacheContext = new SourceCacheContext();
 
         PackageMetadataResource? metadataResource =
             await repoInfo.GetResourceAsync<PackageMetadataResource>(cancellationToken);
@@ -273,7 +274,7 @@ public class PackageVersionService : IPackageVersionService
     {
         SourceRepository repoInfo = GetRepoInfo(nugetApiUrl);
 
-        using var cacheContext = new SourceCacheContext();
+        using SourceCacheContext cacheContext = new SourceCacheContext();
 
         PackageMetadataResource? metadataResource =
             await repoInfo.GetResourceAsync<PackageMetadataResource>(cancellationToken);

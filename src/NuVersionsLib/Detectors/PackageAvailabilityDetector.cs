@@ -1,3 +1,5 @@
+using NuVersionsLib.Detectors.Abstractions;
+
 namespace NuVersionsLib.Detectors;
 
 public class PackageAvailabilityDetector : IPackageAvailabilityDetector
@@ -8,7 +10,7 @@ public class PackageAvailabilityDetector : IPackageAvailabilityDetector
 
         try
         {
-            using var cacheContext = new SourceCacheContext();
+            using SourceCacheContext cacheContext = new SourceCacheContext();
 
             FindPackageByIdResource? searchResource =
                 await repository.GetResourceAsync<FindPackageByIdResource>(cancellationToken);
