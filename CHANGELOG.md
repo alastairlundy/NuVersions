@@ -85,8 +85,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `DelistPlanning.Partition`.
 
 ### Removed
-- ADR 0001, the csproj comments citing it, and the link in this changelog. The trim/AOT reasoning
-  lives in the decision ledger.
+- ADR 0001, the csproj comments citing it, and the link in this changelog.
 - The `IsTrimmable` and `IsAoTCompatible` claims. Trimmed and Native AOT publishes build and then
   die at runtime, because `NuGet.Protocol` reads signature resources through Newtonsoft.Json
   reflection the trimmer deletes. The properties stay out until a publish-and-run against a real
