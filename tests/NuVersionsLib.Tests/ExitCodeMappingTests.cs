@@ -19,7 +19,6 @@
 using NuGet.Versioning;
 using NuVersionsCli;
 using NuVersionsLib.Models;
-using TUnit.Core;
 
 namespace NuVersionsLib.Tests;
 

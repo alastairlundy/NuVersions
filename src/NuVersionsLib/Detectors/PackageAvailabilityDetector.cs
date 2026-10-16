@@ -1,5 +1,3 @@
-using System.Text.Json;
-
 namespace NuVersionsLib.Detectors;
 
 public class PackageAvailabilityDetector : IPackageAvailabilityDetector

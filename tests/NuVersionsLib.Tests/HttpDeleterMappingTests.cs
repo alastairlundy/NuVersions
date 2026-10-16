@@ -18,9 +18,7 @@
 
 using System.Net;
 using NuGet.Versioning;
-using NuVersionsLib;
 using NuVersionsLib.Models;
-using TUnit.Core;
 
 namespace NuVersionsLib.Tests;
 

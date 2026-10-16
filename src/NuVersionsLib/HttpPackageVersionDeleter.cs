@@ -112,7 +112,7 @@ public sealed class HttpPackageVersionDeleter : IPackageVersionDeleter
             return new PackageVersionOutcome(packageId, version, PackageVersionStatus.Failed);
         }
         catch (Exception exception) when (exception is not OperationCanceledException
-            || !cancellationToken.IsCancellationRequested)
+                                          || !cancellationToken.IsCancellationRequested)
         {
             // Server-side faults become a Failed outcome. A cancellation of the caller's token is
             // deliberately not converted: it escapes so the composing service and the command

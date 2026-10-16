@@ -18,7 +18,6 @@
 
 using NuGet.Versioning;
 using NuVersionsCli;
-using TUnit.Core;
 using TUnit.FsCheck;
 
 namespace NuVersionsLib.FuzzTests;

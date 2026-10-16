@@ -19,7 +19,6 @@
 using NuGet.Versioning;
 using NuVersionsLib.Internal;
 using NuVersionsLib.Models;
-using TUnit.Core;
 
 namespace NuVersionsLib.FuzzTests;
 

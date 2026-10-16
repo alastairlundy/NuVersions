@@ -30,7 +30,7 @@ namespace NuVersionsLib.Abstractions;
 public interface IPackageVersionDeleter
 {
     /// <summary>
-    /// Deletes (delists) a single package version from the specified NuGet server.
+    /// Deletes a single package version from the specified NuGet server.
     /// </summary>
     /// <param name="nugetApiUrl">The URL of the NuGet API endpoint serving the package.</param>
     /// <param name="packageId">The identifier of the package the version belongs to.</param>
