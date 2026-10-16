@@ -31,15 +31,18 @@ namespace NuVersionsCli.Helpers;
 /// </remarks>
 internal static class PackageVersionStatusExtensions
 {
-    internal static string ToKebabCase(this PackageVersionStatus status) => status switch
+    extension(PackageVersionStatus status)
     {
-        PackageVersionStatus.Unlisted => "unlisted",
-        PackageVersionStatus.AlreadyUnlisted => "already-unlisted",
-        PackageVersionStatus.NotOnServer => "not-on-server",
-        PackageVersionStatus.RateLimited => "rate-limited",
-        PackageVersionStatus.Failed => "failed",
-        PackageVersionStatus.NotAttempted => "not-attempted",
-        _ => throw new ArgumentOutOfRangeException(nameof(status), status,
-            $"Unhandled {nameof(PackageVersionStatus)} member: add its kebab-case spelling in {nameof(ToKebabCase)}.")
-    };
+        internal string ToKebabCase() => status switch
+        {
+            PackageVersionStatus.Unlisted => "unlisted",
+            PackageVersionStatus.AlreadyUnlisted => "already-unlisted",
+            PackageVersionStatus.NotOnServer => "not-on-server",
+            PackageVersionStatus.RateLimited => "rate-limited",
+            PackageVersionStatus.Failed => "failed",
+            PackageVersionStatus.NotAttempted => "not-attempted",
+            _ => throw new ArgumentOutOfRangeException(nameof(status), status,
+                $"Unhandled {nameof(PackageVersionStatus)} member: add its kebab-case spelling in {nameof(ToKebabCase)}.")
+        };
+    }
 }
