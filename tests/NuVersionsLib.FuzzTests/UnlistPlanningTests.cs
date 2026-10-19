@@ -23,7 +23,7 @@ using NuVersionsLib.Models;
 namespace NuVersionsLib.FuzzTests;
 
 /// <summary>
-/// Covers the partitioning that decides, per version, whether to send a delete, report the version as
+/// Covers the partitioning that decides, per version, whether to send an unlist request, report the version as
 /// already unlisted, or report that the server has never heard of it.
 /// </summary>
 /// <remarks>
@@ -31,7 +31,7 @@ namespace NuVersionsLib.FuzzTests;
 /// mistyped or never-published version report success, which silently defeats the point of running the
 /// tool in CI.
 /// </remarks>
-public class DelistPlanningTests
+public class UnlistPlanningTests
 {
     private static PackageVersionListingInfo Exists(bool isListed) => new()
     {
@@ -46,14 +46,14 @@ public class DelistPlanningTests
     private static NuGetVersion V(string version) => NuGetVersion.Parse(version);
 
     [Test]
-    [Arguments("1.0.0", true, true, 1, 0, 0)] // listed and present -> needs a delete
+    [Arguments("1.0.0", true, true, 1, 0, 0)] // listed and present -> needs an unlist request
     [Arguments("1.0.0", false, true, 0, 1, 0)] // present but unlisted -> already unlisted
     [Arguments("1.0.0", true, false, 0, 0, 1)] // not present -> not on server, whatever IsListed says
     [Arguments("1.0.0", false, false, 0, 0, 1)]
     [Arguments("2.5.0-rc.1", true, true, 1, 0, 0)]
     [Arguments("2.5.0-rc.1", false, false, 0, 0, 1)]
     public async Task Partition_RoutesVersionToExactlyOneBucket(string version, bool isListed,
-        bool versionExists, int expectedToDelist, int expectedAlreadyDelisted, int expectedNotOnServer)
+        bool versionExists, int expectedToUnlist, int expectedAlreadyUnlisted, int expectedNotOnServer)
     {
         NuGetVersion parsed = V(version);
 
@@ -62,10 +62,10 @@ public class DelistPlanningTests
             [parsed] = versionExists ? Exists(isListed) : Missing()
         };
 
-        DelistPlan plan = DelistPlanning.Partition([parsed], listingInfo);
+        UnlistPlan plan = UnlistPlanning.Partition([parsed], listingInfo);
 
-        await Assert.That(plan.ToDelist.Count).IsEqualTo(expectedToDelist);
-        await Assert.That(plan.AlreadyDelisted.Count).IsEqualTo(expectedAlreadyDelisted);
+        await Assert.That(plan.ToUnlist.Count).IsEqualTo(expectedToUnlist);
+        await Assert.That(plan.AlreadyUnlisted.Count).IsEqualTo(expectedAlreadyUnlisted);
         await Assert.That(plan.NotOnServer.Count).IsEqualTo(expectedNotOnServer);
     }
 
@@ -75,16 +75,16 @@ public class DelistPlanningTests
         NuGetVersion requested = V("99.99.99-nope");
 
         // The server never reported this version, so the lookup is empty.
-        DelistPlan plan = DelistPlanning.Partition([requested], new Dictionary<NuGetVersion, PackageVersionListingInfo>());
+        UnlistPlan plan = UnlistPlanning.Partition([requested], new Dictionary<NuGetVersion, PackageVersionListingInfo>());
 
-        await Assert.That(plan.ToDelist).IsEmpty();
-        await Assert.That(plan.AlreadyDelisted).IsEmpty();
+        await Assert.That(plan.ToUnlist).IsEmpty();
+        await Assert.That(plan.AlreadyUnlisted).IsEmpty();
         await Assert.That(plan.NotOnServer.Count).IsEqualTo(1);
         await Assert.That(plan.NotOnServer[0]).IsEqualTo(requested);
     }
 
     [Test]
-    public async Task Partition_NeverReportsAVersionAsAlreadyDelistedWhenItDoesNotExist()
+    public async Task Partition_NeverReportsAVersionAsAlreadyUnlistedWhenItDoesNotExist()
     {
         NuGetVersion ghost = V("1.0.0-alpha");
 
@@ -93,9 +93,9 @@ public class DelistPlanningTests
             [ghost] = Missing()
         };
 
-        DelistPlan plan = DelistPlanning.Partition([ghost], listingInfo);
+        UnlistPlan plan = UnlistPlanning.Partition([ghost], listingInfo);
 
-        await Assert.That(plan.AlreadyDelisted).IsEmpty();
+        await Assert.That(plan.AlreadyUnlisted).IsEmpty();
         await Assert.That(plan.NotOnServer.Count).IsEqualTo(1);
     }
 
@@ -112,13 +112,13 @@ public class DelistPlanningTests
             // requested[3] is deliberately absent from the lookup.
         };
 
-        DelistPlan plan = DelistPlanning.Partition(requested, listingInfo);
+        UnlistPlan plan = UnlistPlanning.Partition(requested, listingInfo);
 
-        int total = plan.ToDelist.Count + plan.AlreadyDelisted.Count + plan.NotOnServer.Count;
+        int total = plan.ToUnlist.Count + plan.AlreadyUnlisted.Count + plan.NotOnServer.Count;
 
         await Assert.That(total).IsEqualTo(requested.Length);
-        await Assert.That(plan.ToDelist[0]).IsEqualTo(requested[0]);
-        await Assert.That(plan.AlreadyDelisted[0]).IsEqualTo(requested[1]);
+        await Assert.That(plan.ToUnlist[0]).IsEqualTo(requested[0]);
+        await Assert.That(plan.AlreadyUnlisted[0]).IsEqualTo(requested[1]);
         await Assert.That(plan.NotOnServer).IsEquivalentTo(new[] { requested[2], requested[3] });
     }
 
@@ -132,20 +132,20 @@ public class DelistPlanningTests
             [version] = Exists(isListed: true)
         };
 
-        DelistPlan plan = DelistPlanning.Partition([version, version, version], listingInfo);
+        UnlistPlan plan = UnlistPlanning.Partition([version, version, version], listingInfo);
 
-        await Assert.That(plan.ToDelist.Count).IsEqualTo(1);
-        await Assert.That(plan.AlreadyDelisted).IsEmpty();
+        await Assert.That(plan.ToUnlist.Count).IsEqualTo(1);
+        await Assert.That(plan.AlreadyUnlisted).IsEmpty();
         await Assert.That(plan.NotOnServer).IsEmpty();
     }
 
     [Test]
     public async Task Partition_HandlesAnEmptyRequest()
     {
-        DelistPlan plan = DelistPlanning.Partition([], new Dictionary<NuGetVersion, PackageVersionListingInfo>());
+        UnlistPlan plan = UnlistPlanning.Partition([], new Dictionary<NuGetVersion, PackageVersionListingInfo>());
 
-        await Assert.That(plan.ToDelist).IsEmpty();
-        await Assert.That(plan.AlreadyDelisted).IsEmpty();
+        await Assert.That(plan.ToUnlist).IsEmpty();
+        await Assert.That(plan.AlreadyUnlisted).IsEmpty();
         await Assert.That(plan.NotOnServer).IsEmpty();
     }
 
@@ -161,18 +161,18 @@ public class DelistPlanningTests
         Dictionary<NuGetVersion, PackageVersionListingInfo> listed = new() { [parsed] = Exists(isListed) };
         Dictionary<NuGetVersion, PackageVersionListingInfo> missing = new() { [parsed] = Missing() };
 
-        DelistPlan fromMissing = DelistPlanning.Partition([parsed], missing);
-        DelistPlan fromListed = DelistPlanning.Partition([parsed], listed);
+        UnlistPlan fromMissing = UnlistPlanning.Partition([parsed], missing);
+        UnlistPlan fromListed = UnlistPlanning.Partition([parsed], listed);
 
         // Whatever the listed flag says, a version that is not on the server must land in NotOnServer.
         await Assert.That(fromMissing.NotOnServer.Count).IsEqualTo(1);
-        await Assert.That(fromMissing.ToDelist).IsEmpty();
-        await Assert.That(fromMissing.AlreadyDelisted).IsEmpty();
+        await Assert.That(fromMissing.ToUnlist).IsEmpty();
+        await Assert.That(fromMissing.AlreadyUnlisted).IsEmpty();
 
         // Sanity: the listed version is routed by IsListed.
         if (isListed)
-            await Assert.That(fromListed.ToDelist.Count).IsEqualTo(1);
+            await Assert.That(fromListed.ToUnlist.Count).IsEqualTo(1);
         else
-            await Assert.That(fromListed.AlreadyDelisted.Count).IsEqualTo(1);
+            await Assert.That(fromListed.AlreadyUnlisted.Count).IsEqualTo(1);
     }
 }
