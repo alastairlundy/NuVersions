@@ -64,7 +64,7 @@ public class ShowCommand
         _serviceProvider = serviceProvider;
 
         // Prefetched as a plain value so the command body holds no environment-variable lookups;
-        // the precedence chain itself lives in DelistOptions.ResolveServerUrl.
+        // the precedence chain itself lives in UnlistOptions.ResolveServerUrl.
         _serverUrlGeneric = Environment.GetEnvironmentVariable("NUGET_SERVER_URL");
     }
 

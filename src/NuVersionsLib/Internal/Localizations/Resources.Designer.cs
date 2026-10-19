@@ -69,15 +69,6 @@ namespace NuVersionsLib.Internal.Localizations {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Package already de-listed..
-        /// </summary>
-        internal static string Info_Package_AlreadyDelisted {
-            get {
-                return ResourceManager.GetString("Info.Package.AlreadyDelisted", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to Version &quot;{0}&quot; was not found on Nuget Server for package &quot;{1}&quot;..
         /// </summary>
         internal static string Errors_Package_VersionNotFoundOnServer {

@@ -38,6 +38,12 @@ namespace NuVersionsLib.Tests;
 /// and <see cref="FixedAvailabilityDetector"/> doubles are shared with the command-level tests.
 /// </para>
 /// <para>
+/// Both transport doubles record a dispatch that reached them unscripted, and the tests assert
+/// that record is empty. A stray dispatch cannot fail on its own — the production flow turns the
+/// double's fault into a Failed outcome — so the record is what names the request that should
+/// not have gone out.
+/// </para>
+/// <para>
 /// HTTP dispatch additionally needs <see cref="LoopbackServiceIndexServer"/>: the service index is
 /// resolved through NuGet.Protocol's own HTTP stack, so a real (but strictly local) listener serves
 /// the index document, and the handler scripts the publish-endpoint responses. A 404 is only
@@ -70,7 +76,7 @@ public class PackageUnlistServiceTests
         };
 
         // The first dispatch answers 429; nothing is scripted for the later versions, so any
-        // further dispatch would throw inside the handler and fail this test loudly.
+        // further dispatch would reach the handler unscripted and be recorded as such.
         FakeScriptedHttpTransportHandler handler = new();
         handler.ScriptStatusCode(PublishPath(first), (HttpStatusCode)429);
         PackageUnlistService service =
@@ -78,6 +84,10 @@ public class PackageUnlistServiceTests
 
         List<PackageVersionOutcome> outcomes =
             await CollectAsync(service, server.ServiceIndexUrl, [first, second, third]);
+
+        // Checked before the outcome assertions: a stray dispatch turns into a Failed outcome, so
+        // the status assertions would otherwise report the symptom instead of the cause.
+        await AssertNoUnscriptedRequestAsync(handler);
 
         await Assert.That(outcomes.Count).IsEqualTo(3);
         await Assert.That(outcomes[0].Version).IsEqualTo(first);
@@ -106,13 +116,17 @@ public class PackageUnlistServiceTests
             // absent is deliberately missing from the lookup: not-on-server, not already-unlisted.
         };
 
-        // No responses scripted: any dispatch would throw inside the handler and fail the test loudly.
+        // No responses scripted: any dispatch would reach the handler unscripted and be recorded.
         FakeScriptedHttpTransportHandler handler = new();
         PackageUnlistService service =
             CreateHttpService(listingInfo, packageExists: true, new FakeHttpClientFactory(handler));
 
         List<PackageVersionOutcome> outcomes =
             await CollectAsync(service, ServerUrl, [firstUnlisted, absent, secondUnlisted]);
+
+        // Checked before the outcome assertions: a stray dispatch turns into a Failed outcome, so
+        // the status assertions would otherwise report the symptom instead of the cause.
+        await AssertNoUnscriptedRequestAsync(handler);
 
         await Assert.That(outcomes.Count).IsEqualTo(3);
         await Assert.That(outcomes[0].Version).IsEqualTo(firstUnlisted);
@@ -151,6 +165,10 @@ public class PackageUnlistServiceTests
 
         List<PackageVersionOutcome> outcomes = await CollectAsync(service, server.ServiceIndexUrl,
             [absent, unlisted, firstListed, secondListed]);
+
+        // Checked before the outcome assertions: a stray dispatch turns into a Failed outcome, so
+        // the status assertions would otherwise report the symptom instead of the cause.
+        await AssertNoUnscriptedRequestAsync(handler);
 
         await Assert.That(outcomes.Count).IsEqualTo(4);
         await Assert.That(outcomes[0].Version).IsEqualTo(unlisted);
@@ -200,6 +218,10 @@ public class PackageUnlistServiceTests
         await Assert.That(failure.ParamName).IsEqualTo("packageId");
         await Assert.That(failure.Message).Contains(PackageId);
         await Assert.That(outcomes).IsEmpty();
+
+        // Checked before the count assertion: a stray dispatch turns into a Failed outcome, so the
+        // count assertion would otherwise report the symptom instead of the cause.
+        await AssertNoUnscriptedRequestAsync(handler);
         await Assert.That(handler.DispatchCount).IsEqualTo(0);
     }
 
@@ -461,6 +483,8 @@ public class PackageUnlistServiceTests
         List<PackageVersionOutcome> outcomes =
             await CollectAsync(service, server.ServiceIndexUrl, [version], cancellationToken);
 
+        await AssertNoUnscriptedRequestAsync(handler);
+
         return outcomes.Single();
     }
 
@@ -476,7 +500,35 @@ public class PackageUnlistServiceTests
         List<PackageVersionOutcome> outcomes =
             await CollectAsync(service, ServerUrl, [version], cancellationToken);
 
+        await AssertNoUnscriptedRunAsync(invoker);
+
         return outcomes.Single();
+    }
+
+    /// <summary>
+    /// Asserts that every request the HTTP transport double received had a scripted response.
+    /// </summary>
+    /// <remarks>
+    /// A dispatch the test never intended to allow does not fail on its own: the production flow
+    /// converts the double's "no scripted response" fault into a Failed outcome, so the stray
+    /// request would surface only as a status mismatch. This assertion names the request that
+    /// actually went out.
+    /// </remarks>
+    private static async Task AssertNoUnscriptedRequestAsync(FakeScriptedHttpTransportHandler handler)
+    {
+        await Assert.That(handler.UnscriptedRequests).IsEmpty();
+    }
+
+    /// <summary>
+    /// Asserts that every process run the SDK transport double received had a scripted result.
+    /// </summary>
+    /// <remarks>
+    /// The same reason as the HTTP twin: the production flow converts the double's "no scripted
+    /// result" fault into a Failed outcome, so this record is what makes the stray run visible.
+    /// </remarks>
+    private static async Task AssertNoUnscriptedRunAsync(FakeScriptedProcessInvoker invoker)
+    {
+        await Assert.That(invoker.UnscriptedRuns).IsEmpty();
     }
 
     private static BufferedProcessResult MakeResult(int exitCode, string standardOutput,

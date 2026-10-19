@@ -376,7 +376,7 @@ public class UnlistCommand
             }
             else
             {
-                bucket = listing.IsListed ? DryRunBucket.WouldDelist : DryRunBucket.AlreadyDelisted;
+                bucket = listing.IsListed ? DryRunBucket.WouldUnlist : DryRunBucket.AlreadyUnlisted;
             }
 
             plan.Add(new DryRunPlanLine(version, bucket));
@@ -526,8 +526,8 @@ public class UnlistCommand
 
     private static string DescribeBucket(DryRunBucket bucket) => bucket switch
     {
-        DryRunBucket.WouldDelist => "would-unlist",
-        DryRunBucket.AlreadyDelisted => "already-unlisted",
+        DryRunBucket.WouldUnlist => "would-unlist",
+        DryRunBucket.AlreadyUnlisted => "already-unlisted",
         DryRunBucket.NotOnServer => "not-on-server",
         _ => throw new ArgumentOutOfRangeException(nameof(bucket), bucket,
             $"Unhandled {nameof(DryRunBucket)} member.")
@@ -539,8 +539,8 @@ public class UnlistCommand
     /// </summary>
     private static PackageVersionStatus ToBucketStatus(DryRunBucket bucket) => bucket switch
     {
-        DryRunBucket.WouldDelist => PackageVersionStatus.NotAttempted,
-        DryRunBucket.AlreadyDelisted => PackageVersionStatus.AlreadyUnlisted,
+        DryRunBucket.WouldUnlist => PackageVersionStatus.NotAttempted,
+        DryRunBucket.AlreadyUnlisted => PackageVersionStatus.AlreadyUnlisted,
         DryRunBucket.NotOnServer => PackageVersionStatus.NotOnServer,
         _ => throw new ArgumentOutOfRangeException(nameof(bucket), bucket,
             $"Unhandled {nameof(DryRunBucket)} member.")

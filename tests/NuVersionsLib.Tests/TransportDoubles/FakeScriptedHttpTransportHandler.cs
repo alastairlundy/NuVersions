@@ -45,6 +45,12 @@ internal sealed record DispatchedRequest(string Method, string RequestUri);
 /// test therefore always runs against a genuinely advertised publish endpoint (the
 /// 404-only-when-publish-endpoint-was-advertised rule), never against a stubbed flag.
 /// </para>
+/// <para>
+/// An unscripted path throws, but the production flow converts every non-cancellation fault into a
+/// <see cref="PackageVersionStatus.Failed"/> outcome, so that throw never reaches the test. The
+/// stray request is therefore also recorded in <see cref="UnscriptedRequests"/>, which is what
+/// lets a test name the dispatch that should not have happened.
+/// </para>
 /// </remarks>
 internal sealed class FakeScriptedHttpTransportHandler : HttpMessageHandler
 {
@@ -52,6 +58,16 @@ internal sealed class FakeScriptedHttpTransportHandler : HttpMessageHandler
 
     /// <summary>Every request that reached the handler, in arrival order.</summary>
     public List<DispatchedRequest> DispatchedRequests { get; } = [];
+
+    /// <summary>
+    /// The requests that reached the handler with no scripted response, in arrival order.
+    /// </summary>
+    /// <remarks>
+    /// A test asserts this list is empty. The throw the handler raises for such a request is
+    /// converted to a <see cref="PackageVersionStatus.Failed"/> outcome by the production flow, so
+    /// this record — not the exception — is what makes the stray dispatch visible.
+    /// </remarks>
+    public List<DispatchedRequest> UnscriptedRequests { get; } = [];
 
     /// <summary>How many requests reached the handler.</summary>
     public int DispatchCount => DispatchedRequests.Count;
@@ -69,11 +85,15 @@ internal sealed class FakeScriptedHttpTransportHandler : HttpMessageHandler
     {
         string path = request.RequestUri?.AbsolutePath ?? "/";
 
-        DispatchedRequests.Add(new DispatchedRequest(request.Method.Method,
-            request.RequestUri?.ToString() ?? string.Empty));
+        DispatchedRequest dispatched = new(request.Method.Method,
+            request.RequestUri?.ToString() ?? string.Empty);
+
+        DispatchedRequests.Add(dispatched);
 
         if (!_responses.TryGetValue(path, out object? scripted))
         {
+            UnscriptedRequests.Add(dispatched);
+
             throw new InvalidOperationException(
                 $"No scripted response for {request.Method} {request.RequestUri}.");
         }

@@ -2,7 +2,7 @@ namespace NuVersionsCli.Models;
 
 internal enum DryRunBucket
 {
-    WouldDelist,
-    AlreadyDelisted,
+    WouldUnlist,
+    AlreadyUnlisted,
     NotOnServer
 }

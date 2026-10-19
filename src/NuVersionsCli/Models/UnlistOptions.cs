@@ -12,7 +12,7 @@ public sealed record UnlistOptions
     public const string DefaultServerUrl = "https://api.nuget.org/v3/index.json";
 
     /// <summary>
-    /// The default delisting backend when none is supplied.
+    /// The default unlisting backend when none is supplied.
     /// </summary>
     public const string DefaultBackend = "http";
 

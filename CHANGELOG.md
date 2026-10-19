@@ -12,13 +12,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   and pre-release, listed and unlisted — with one `Status=listed|unlisted` line per version.
   It sends no delete request and needs no API key. With `--output json`, same one-object-per-line
   NDJSON schema as `unlist`; a missing package exits `2`.
-- A renamed project. The package `PreReleaseDelist` and its `prerelease-delist` command are now
-  `NuVersions` and `nuversions`, and the single command is now a hierarchy: `nuversions unlist`
-  (today's delist behavior) and `nuversions show`. The old package ID will be deprecated on
-  NuGet.org pointing at the new one.
 
 ### Changed
 
+- The project is renamed: the project name `PreReleaseDelist` becomes `NuVersions`, the NuGet id
+  `PreReleaseDelist` becomes `NuVersions`, and the `prerelease-delist` command becomes
+  `nuversions`. The single command is now a hierarchy: `nuversions unlist` (today's delist
+  behavior) and `nuversions show`. The old package id will be deprecated on NuGet.org pointing
+  at the new one.
 - The unlist status vocabulary now matches nuget.org's own wording: the outcome formerly rendered
   `delisted`/`already-delisted` is `unlisted`/`already-unlisted`, and dry-run buckets render
   `would-unlist`. Everything about the run is otherwise identical: same statuses for
@@ -37,7 +38,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Removed
 
-- The `prerelease-delist` command name and the `PreReleaseDelist` package ID.
+- The `prerelease-delist` command name and the `PreReleaseDelist` package id.
 
 ## 0.2.0 - 2026-10-15
 

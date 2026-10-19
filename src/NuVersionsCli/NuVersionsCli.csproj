@@ -12,27 +12,38 @@
         <Copyright>Copyright (c) Alastair Lundy 2026</Copyright>
         <RepositoryUrl>https://github.com/alastairlundy/NuVersions</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
-        <PackageTags>delist;nuget;dotnet-tool;cli;unlist</PackageTags>
+        <PackageTags>unlist;nuget;dotnet-tool;cli</PackageTags>
         <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
         <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
         <PackageId>NuVersions</PackageId>
-        <Description>De-list NuGet package versions programatically with ease.</Description>
+        <Description>Unlist NuGet package versions programmatically with ease.</Description>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageReleaseNotes>See the README and CHANGELOG.md.
 
 ## Changes since 0.2.0
 
 ### Added
-- Renamed from `PreReleaseDelist` / `prerelease-delist`: the tool is now `NuVersions` / `nuversions`,
-  with the previous behavior available as `nuversions unlist` and a new read-only sibling
-  `nuversions show` that reports whether each version of a package is listed or unlisted.
+- The `nuversions show` subcommand: a pure read that prints every version of a package — stable
+  and pre-release, listed and unlisted — with one `Status=listed|unlisted` line per version.
+  It sends no delete request and needs no API key. With `--output json`, same one-object-per-line
+  NDJSON schema as `unlist`; a missing package exits `2`.
+
+### Changed
+- The project is renamed: the project name `PreReleaseDelist` becomes `NuVersions`, the NuGet id
+  `PreReleaseDelist` becomes `NuVersions`, and the `prerelease-delist` command becomes
+  `nuversions`. The single command is now a hierarchy: `nuversions unlist` (today's delist
+  behavior) and `nuversions show`. The old package id will be deprecated on NuGet.org pointing
+  at the new one.
 - The unlist status vocabulary now matches nuget.org terminology: `unlisted` / `already-unlisted`
   (was `delisted` / `already-delisted`), with the same exit-code contract.
 - The environment-variable fallback prefix is now `NUVERSIONS_`; the generic `NUGET_*` names stay.
 - The domain vocabulary is unlist end to end: Delist becomes Unlist, Delisting becomes Unlisting,
   Delisted becomes Unlisted, and Delete becomes Unlist at the contract level. The all-pre-release
   option is now `--unlist-all` (was `--delist-all`). Terms are defined by the Unlist action entry
-  in GLOSSARY.md.</PackageReleaseNotes>
+  in GLOSSARY.md.
+
+### Removed
+- The `prerelease-delist` command name and the `PreReleaseDelist` package id.</PackageReleaseNotes>
         <TargetFramework>net10.0</TargetFramework>
         <Version>0.3.0</Version>
         <PackageVersion>0.3.0</PackageVersion>

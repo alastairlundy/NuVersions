@@ -31,6 +31,12 @@ namespace NuVersionsLib.Tests;
 /// it returns process results, never
 /// outcomes, so the SDK output-classification code under test is the real
 /// <see cref="NetSdkPackageUnlistService"/> mapping.
+/// <para>
+/// The production flow converts every non-cancellation fault into a
+/// <see cref="PackageVersionStatus.Failed"/> outcome, so the throw an unscripted run raises never
+/// reaches the test. Such a run is therefore also recorded in <see cref="UnscriptedRuns"/>, which is
+/// what lets a test name the dispatch that should not have happened.
+/// </para>
 /// </remarks>
 internal sealed class FakeScriptedProcessInvoker : IProcessInvoker
 {
@@ -39,6 +45,16 @@ internal sealed class FakeScriptedProcessInvoker : IProcessInvoker
 
     /// <summary>How many buffered runs were dispatched to this invoker.</summary>
     public int BufferedCallCount { get; private set; }
+
+    /// <summary>
+    /// The process runs that reached the invoker with no scripted result, in arrival order.
+    /// </summary>
+    /// <remarks>
+    /// A test asserts this list is empty. The throw the invoker raises for such a run is converted
+    /// to a <see cref="PackageVersionStatus.Failed"/> outcome by the production flow, so this record
+    /// — not the exception — is what makes the stray dispatch visible.
+    /// </remarks>
+    public List<ProcessConfiguration> UnscriptedRuns { get; } = [];
 
     /// <summary>Scripts the next <see cref="BufferedProcessResult"/> a dispatch returns.</summary>
     public void Enqueue(BufferedProcessResult result) => _results.Enqueue(result);
@@ -58,6 +74,8 @@ internal sealed class FakeScriptedProcessInvoker : IProcessInvoker
 
         if (_results.Count == 0)
         {
+            UnscriptedRuns.Add(processConfiguration);
+
             throw new InvalidOperationException(
                 $"No scripted result left for '{processConfiguration.TargetFilePath}'.");
         }

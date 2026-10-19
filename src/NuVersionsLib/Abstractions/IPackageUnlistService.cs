@@ -19,12 +19,12 @@
 namespace NuVersionsLib.Abstractions;
 
 /// <summary>
-/// Interface for requesting package delisting from a NuGet Server.
+/// Interface for requesting package unlisting from a NuGet Server.
 /// </summary>
 public interface IPackageUnlistService
 {
     /// <summary>
-    /// Requests the delisting of all prerelease versions of a NuGet package.
+    /// Requests the unlisting of all prerelease versions of a NuGet package.
     /// </summary>
     /// <param name="nugetApiUrl">The URL of the NuGet API endpoint to which the request will be sent.</param>
     /// <param name="nugetApiKey">The API key required for authentication with the NuGet service.</param>
@@ -37,12 +37,12 @@ public interface IPackageUnlistService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Requests the delisting of specified versions from a NuGet package.
+    /// Requests the unlisting of specified versions from a NuGet package.
     /// </summary>
     /// <param name="nugetApiUrl">The URL of the NuGet API endpoint to which the request will be sent.</param>
     /// <param name="nugetApiKey">The API key required for authentication with the NuGet service.</param>
     /// <param name="packageName">The name of the package from which pre-release versions are to be unlisted.</param>
-    /// <param name="versions">The specific versions to delist.</param>
+    /// <param name="versions">The specific versions to unlist.</param>
     /// <param name="cancellationToken">A cancellation token that can be used to request cancellation of the operation.</param>
     /// <returns>An asynchronous sequence containing one <see cref="PackageVersionOutcome"/> per requested version.</returns>
     IAsyncEnumerable<PackageVersionOutcome> RequestPackageUnlistingAsync(

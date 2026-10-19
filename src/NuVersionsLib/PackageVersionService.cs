@@ -178,7 +178,7 @@ public class PackageVersionService : IPackageVersionService
     /// <remarks>This method queries the package metadata directly. If the version is not found, it returns false.</remarks>
     /// <param name="nugetApiUrl">The URL of the NuGet API.</param>
     /// <param name="nugetApiKey">The API key for authentication against the NuGet API.</param>
-    /// <param name="packageId">The identifier of the package to check for delisting status.</param>
+    /// <param name="packageId">The identifier of the package to check for unlisting status.</param>
     /// <param name="includePreReleaseVersions">Whether to include pre-release versions in the search results.</param>
     /// <param name="packageVersion">The specific version of the package to verify against.</param>
     /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
