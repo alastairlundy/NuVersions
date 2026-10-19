@@ -27,8 +27,8 @@ namespace NuVersionsLib.Tests;
 /// proof that no dispatch happened at all.
 /// </summary>
 /// <remarks>
-/// Like the HTTP double, this fakes dispatch at the transport edge
-/// (DECISIONS-prerelease-delist-unlister-seam-removal.md#D002): it returns process results, never
+/// Like the HTTP double, this fakes dispatch at the transport edge:
+/// it returns process results, never
 /// outcomes, so the SDK output-classification code under test is the real
 /// <see cref="NetSdkPackageUnlistService"/> mapping.
 /// </remarks>

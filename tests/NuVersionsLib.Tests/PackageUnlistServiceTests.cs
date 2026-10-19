@@ -33,8 +33,8 @@ namespace NuVersionsLib.Tests;
 /// <remarks>
 /// <para>
 /// The <see cref="FakeScriptedHttpTransportHandler"/>/<see cref="FakeHttpClientFactory"/> and
-/// <see cref="FakeScriptedProcessInvoker"/> doubles fake dispatch at the transport edge
-/// (DECISIONS-prerelease-delist-unlister-seam-removal.md#D002); the <see cref="ScriptedVersionService"/>
+/// <see cref="FakeScriptedProcessInvoker"/> doubles fake dispatch at the transport edge;
+/// the <see cref="ScriptedVersionService"/>
 /// and <see cref="FixedAvailabilityDetector"/> doubles are shared with the command-level tests.
 /// </para>
 /// <para>

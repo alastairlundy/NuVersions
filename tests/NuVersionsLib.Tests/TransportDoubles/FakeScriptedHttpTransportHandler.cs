@@ -33,7 +33,7 @@ internal sealed record DispatchedRequest(string Method, string RequestUri);
 /// </summary>
 /// <remarks>
 /// <para>
-/// This double fakes dispatch at the transport edge, per DECISIONS-prerelease-delist-unlister-seam-removal.md#D002:
+/// This double fakes dispatch at the transport edge:
 /// it never produces a <see cref="Models.PackageVersionOutcome"/> itself. The status-code-to-outcome
 /// mapping under test lives in the production services.
 /// </para>
