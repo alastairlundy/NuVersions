@@ -18,7 +18,7 @@
 
 using CliInvoke.Core;
 
-namespace NuVersionsLib.Tests;
+namespace NuVersionsLib.Tests.TransportDoubles;
 
 /// <summary>
 /// An <see cref="IProcessInvoker"/> double replaying a scripted queue of

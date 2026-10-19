@@ -22,11 +22,9 @@ using Microsoft.Extensions.DependencyInjection;
 using NuGet.Protocol.Core.Types;
 using NuGet.Versioning;
 using NuVersionsCli.Helpers;
-using NuVersionsCli.Models;
 using NuVersionsLib.Detectors.Abstractions;
-using NuVersionsLib.Models;
-
 // ReSharper disable ArgumentsStyleOther
+
 // ReSharper disable RedundantDefaultMemberInitializer
 
 namespace NuVersionsCli;
@@ -51,32 +49,21 @@ namespace NuVersionsCli;
     Description = "Unlist specified or all pre-release versions of a NuGet package.")]
 public class UnlistCommand
 {
-    /// <summary>Every requested version was unlisted or was already unlisted.</summary>
-    internal const int ExitSuccess = 0;
-
-    /// <summary>At least one version failed, including a version the server does not have.</summary>
-    internal const int ExitFailure = 1;
-
-    /// <summary>Usage or validation failure: bad options, package not found, invalid version string.</summary>
-    internal const int ExitUsage = 2;
-
-    /// <summary>The server rate-limited the run and the composing service stopped fail-fast.</summary>
-    internal const int ExitRateLimited = 3;
-
-    /// <summary>Remaining dispatches were cancelled before they were attempted.</summary>
-    internal const int ExitCancelled = 4;
-
-    /// <summary>The run was interrupted (Ctrl-C).</summary>
-    internal const int ExitInterrupted = 130;
-
     private readonly IConfiguration _configuration;
+    private readonly IPackageVersionService _packageVersionService;
+    private readonly IPackageAvailabilityDetector _packageAvailabilityDetector;
     private readonly IServiceProvider _serviceProvider;
     private readonly string? _apiKeyGeneric;
     private readonly string? _serverUrlGeneric;
 
-    public UnlistCommand(IConfiguration configuration, IServiceProvider serviceProvider)
+    public UnlistCommand(IConfiguration configuration,
+        IPackageVersionService packageVersionService,
+        IPackageAvailabilityDetector  packageAvailabilityDetector,
+        IServiceProvider serviceProvider)
     {
         _configuration = configuration;
+        _packageVersionService = packageVersionService;
+        _packageAvailabilityDetector = packageAvailabilityDetector;
         _serviceProvider = serviceProvider;
 
         // Prefetched as plain values so the command body holds no environment-variable lookups; the
@@ -151,17 +138,17 @@ public class UnlistCommand
         string[] unknownOptions =
         [
             .. Versions
-                .Where(static version => version.StartsWith('-'))
+                .Where(static version => version.StartsWith('-')),
         ];
 
         if (unknownOptions.Length > 0)
         {
             foreach (string unknownOption in unknownOptions)
             {
-                await Console.Error.WriteLineAsync($"Error: Unrecognized option: '{unknownOption}'.");
+                await Console.Error.WriteLineAsync($"Error: Unrecognized option: '{unknownOption}'.").ConfigureAwait(true);
             }
 
-            return ExitUsage;
+            return ExitCodeHelpers.ExitUsage;
         }
 
         UnlistOptions options = ResolveOptions();
@@ -172,10 +159,10 @@ public class UnlistCommand
         {
             foreach (UnlistOptionsValidationFailure failure in failures)
             {
-                await Console.Error.WriteLineAsync(DescribeValidationFailure(failure));
+                await Console.Error.WriteLineAsync(DescribeValidationFailure(failure)).ConfigureAwait(true);
             }
 
-            return ExitUsage;
+            return ExitCodeHelpers.ExitUsage;
         }
 
         using CancellationTokenSource cancellationSource = new();
@@ -193,32 +180,32 @@ public class UnlistCommand
             IPackageUnlistService unlistService = GetUnlistService(options.Backend);
 
             return options.DryRun
-                ? await RunDryRunAsync(options, cancellationSource.Token)
-                : await RunUnlistAsync(options, unlistService, cancellationSource.Token);
+                ? await RunDryRunAsync(options, cancellationSource.Token).ConfigureAwait(true)
+                : await RunUnlistAsync(options, unlistService, cancellationSource.Token).ConfigureAwait(true);
         }
         catch (ArgumentException exception)
         {
             // Package-not-found-on-server (thrown by the composing services) and invalid version
             // strings under strict parsing both surface as ArgumentException → usage.
-            await Console.Error.WriteLineAsync(exception.Message);
-            return ExitUsage;
+            await Console.Error.WriteLineAsync(exception.Message).ConfigureAwait(true);
+            return ExitCodeHelpers.ExitUsage;
         }
         catch (NuGetProtocolException exception)
         {
             // NuGet.Protocol failures, including resource unavailability, are feed-side problems → 1.
-            await Console.Error.WriteLineAsync(exception.Message);
-            return ExitFailure;
+            await Console.Error.WriteLineAsync(exception.Message).ConfigureAwait(true);
+            return ExitCodeHelpers.ExitFailure;
         }
         catch (InvalidOperationException exception)
         {
             // The library reports an unavailable NuGet.Protocol resource with this type → 1.
-            await Console.Error.WriteLineAsync(exception.Message);
-            return ExitFailure;
+            await Console.Error.WriteLineAsync(exception.Message).ConfigureAwait(true);
+            return ExitCodeHelpers.ExitFailure;
         }
         catch (OperationCanceledException)
         {
             // Ctrl-C cancels the token above; a cancelled run exits 130.
-            return ExitInterrupted;
+            return ExitCodeHelpers.ExitInterrupted;
         }
         finally
         {
@@ -239,27 +226,19 @@ public class UnlistCommand
             // Only version strings starting with a digit are considered; the rest are ignored.
             requestedVersions =
             [
-                .. requestedVersions
-                    .Where(version => !string.IsNullOrWhiteSpace(version) && char.IsDigit(version.Trim()[0]))
+                .. requestedVersions.Where(version => !string.IsNullOrWhiteSpace(version)
+                                                      && char.IsDigit(version.Trim()[0])),
             ];
         }
 
         return UnlistOptions.Create(
-            packageId: PackageId,
-            versions: requestedVersions,
-            apiKeyOption: ApiKey,
-            apiKeyPrefixed: _configuration["NuGetApiKey"],
-            apiKeyGeneric: _apiKeyGeneric,
-            serverUrlOption: ServerUrl,
-            serverUrlPrefixed: _configuration["NuGetServerUrl"],
-            serverUrlGeneric: _serverUrlGeneric,
-            backend: Backend,
-            nonInteractive: NonInteractive,
-            includeZeroMajor: IncludeZeroMajor,
-            useStrictParsing: UseStrictParsing,
-            unlistAllVersions: UnlistAllVersions,
-            dryRun: DryRun,
-            outputMode: OutputMode);
+            PackageId, requestedVersions,
+            ApiKey, _configuration["NuGetApiKey"],
+            _apiKeyGeneric, ServerUrl,
+            _configuration["NuGetServerUrl"],
+            _serverUrlGeneric, Backend, NonInteractive,
+            IncludeZeroMajor, UseStrictParsing, UnlistAllVersions,
+            DryRun, OutputMode);
     }
 
     private static string DescribeValidationFailure(UnlistOptionsValidationFailure failure)
@@ -270,7 +249,7 @@ public class UnlistCommand
         {
             nameof(UnlistOptions.ApiKey) => Resources.Exceptions_Configuration_NugetApiKey,
             nameof(UnlistOptions.Versions) => Resources.Errors_Input_NoVersionStrings,
-            _ => $"Error: {failure.Message}"
+            _ => $"Error: {failure.Message}",
         };
     }
 
@@ -281,8 +260,7 @@ public class UnlistCommand
     private IPackageUnlistService GetUnlistService(string backend)
     {
         string serviceKey = string.Equals(backend, "sdk", StringComparison.OrdinalIgnoreCase)
-            ? "sdk"
-            : UnlistOptions.DefaultBackend;
+            ? "sdk" : UnlistOptions.DefaultBackend;
 
         return _serviceProvider.GetRequiredKeyedService<IPackageUnlistService>(serviceKey);
     }
@@ -291,10 +269,11 @@ public class UnlistCommand
     /// Sends the unlist requests through the composing service, renders every outcome, and returns the
     /// merged exit code.
     /// </summary>
-    private async Task<int> RunUnlistAsync(UnlistOptions options, IPackageUnlistService unlistService,
+    private static async Task<int> RunUnlistAsync(UnlistOptions options, IPackageUnlistService unlistService,
         CancellationToken cancellationToken)
     {
-        ArgumentException.ThrowIfNullOrEmpty(options.ApiKey);
+        if (string.IsNullOrEmpty(options.ApiKey))
+            throw new ArgumentNullException(paramName: nameof(options));
 
         IAsyncEnumerable<PackageVersionOutcome> results;
 
@@ -313,15 +292,15 @@ public class UnlistCommand
         }
 
         List<PackageVersionOutcome> outcomes = [];
-        int exitCode = ExitSuccess;
+        int exitCode = ExitCodeHelpers.ExitSuccess;
 
-        await foreach (PackageVersionOutcome outcome in results.WithCancellation(cancellationToken))
+        await foreach (PackageVersionOutcome outcome in results.WithCancellation(cancellationToken).ConfigureAwait(true))
         {
             outcomes.Add(outcome);
-            exitCode = MergeExitCode(exitCode, ToExitCode(outcome.Status));
+            exitCode = ExitCodeHelpers.MergeExitCode(exitCode, ExitCodeHelpers.ToExitCode(outcome.Status));
         }
 
-        await WriteResultsAsync(options, outcomes);
+        await WriteResultsAsync(options, outcomes).ConfigureAwait(true);
 
         return exitCode;
     }
@@ -333,51 +312,35 @@ public class UnlistCommand
     /// </summary>
     private async Task<int> RunDryRunAsync(UnlistOptions options, CancellationToken cancellationToken)
     {
-        IPackageAvailabilityDetector availabilityDetector =
-            _serviceProvider.GetRequiredService<IPackageAvailabilityDetector>();
-        IPackageVersionService versionService =
-            _serviceProvider.GetRequiredService<IPackageVersionService>();
-
         // Network reads still happen. The read paths require a non-empty API key string but
         // never send it, so a keyless dry-run passes a placeholder; no key is ever written to a stream.
         string readApiKey = options.ApiKey ?? "dry-run";
 
-        bool packageExists = await availabilityDetector.CheckPackageExistsAsync(options.ServerUrl,
-            options.PackageId, cancellationToken);
+        bool packageExists = await _packageAvailabilityDetector.CheckPackageExistsAsync(options.ServerUrl,
+            options.PackageId, cancellationToken).ConfigureAwait(true);
 
         if (!packageExists)
         {
             await Console.Error.WriteLineAsync(
-                $"Package '{options.PackageId}' does not exist on NuGet server '{options.ServerUrl}'.");
-            return ExitUsage;
+                    $"Package '{options.PackageId}' does not exist on NuGet server '{options.ServerUrl}'.")
+                .ConfigureAwait(true);
+            return ExitCodeHelpers.ExitUsage;
         }
 
         IList<NuGetVersion> requestedVersions = options.UnlistAllVersions
-            ? await versionService.GetPrereleasePackageVersionsAsync(options.ServerUrl, readApiKey,
-                options.PackageId, options.IncludeZeroMajor, cancellationToken)
+            ? await _packageVersionService.GetPrereleasePackageVersionsAsync(options.ServerUrl, readApiKey,
+                options.PackageId, options.IncludeZeroMajor, cancellationToken).ConfigureAwait(true)
             : ParseVersions([.. options.Versions], options.UseStrictParsing);
 
         IDictionary<NuGetVersion, PackageVersionListingInfo> listingInfo =
-            await versionService.CheckPackageVersionsListedAsync(options.ServerUrl, readApiKey,
-                options.PackageId, includePreReleaseVersions: true, requestedVersions, cancellationToken);
+            await _packageVersionService.CheckPackageVersionsListedAsync(options.ServerUrl, readApiKey,
+                options.PackageId, includePreReleaseVersions: true, requestedVersions, cancellationToken).ConfigureAwait(true);
 
         List<DryRunPlanLine> plan = [];
 
         foreach (NuGetVersion version in requestedVersions.Distinct())
         {
-            // The same partition rule the composing services apply, resolved from read-only listing
-            // metadata: absent from the server, present but unlisted, or listed and to be unlisted.
-            DryRunBucket bucket;
-
-            if (!listingInfo.TryGetValue(version, out PackageVersionListingInfo? listing)
-                || !listing.PackageVersionExists)
-            {
-                bucket = DryRunBucket.NotOnServer;
-            }
-            else
-            {
-                bucket = listing.IsListed ? DryRunBucket.WouldUnlist : DryRunBucket.AlreadyUnlisted;
-            }
+            var bucket = GetDryRunBucket(listingInfo, version);
 
             plan.Add(new DryRunPlanLine(version, bucket));
         }
@@ -387,7 +350,7 @@ public class UnlistCommand
             foreach (DryRunPlanLine line in plan)
             {
                 await Console.Out.WriteLineAsync(ToJsonPropertyLine(options.PackageId, line.Version,
-                    ToBucketStatus(line.Bucket)));
+                    ToBucketStatus(line.Bucket))).ConfigureAwait(true);
             }
         }
         else
@@ -395,11 +358,31 @@ public class UnlistCommand
             foreach (DryRunPlanLine line in plan)
             {
                 await Console.Out.WriteLineAsync(
-                    $"Version={line.Version.ToNormalizedString()} Bucket={DescribeBucket(line.Bucket)}");
+                    $"Version={line.Version.ToNormalizedString()} Bucket={DescribeBucket(line.Bucket)}").ConfigureAwait(true);
             }
         }
 
-        return plan.Any(line => line.Bucket == DryRunBucket.NotOnServer) ? ExitFailure : ExitSuccess;
+        return plan.Exists(line => line.Bucket == DryRunBucket.NotOnServer) ?
+            ExitCodeHelpers.ExitFailure : ExitCodeHelpers.ExitSuccess;
+    }
+
+    private static DryRunBucket GetDryRunBucket(IDictionary<NuGetVersion, PackageVersionListingInfo> listingInfo, NuGetVersion version)
+    {
+        // The same partition rule the composing services apply, resolved from read-only listing
+        // metadata: absent from the server, present but unlisted, or listed and to be unlisted.
+        DryRunBucket bucket;
+
+        if (!listingInfo.TryGetValue(version, out PackageVersionListingInfo? listing)
+            || !listing.PackageVersionExists)
+        {
+            bucket = DryRunBucket.NotOnServer;
+        }
+        else
+        {
+            bucket = listing.IsListed ? DryRunBucket.WouldUnlist : DryRunBucket.AlreadyUnlisted;
+        }
+
+        return bucket;
     }
 
     /// <summary>
@@ -414,7 +397,7 @@ public class UnlistCommand
             foreach (PackageVersionOutcome outcome in outcomes)
             {
                 await Console.Out.WriteLineAsync(
-                    ToJsonPropertyLine(outcome.PackageId, outcome.Version, outcome.Status));
+                    ToJsonPropertyLine(outcome.PackageId, outcome.Version, outcome.Status)).ConfigureAwait(true);
             }
 
             return;
@@ -424,7 +407,7 @@ public class UnlistCommand
         {
             foreach (PackageVersionOutcome outcome in outcomes)
             {
-                await Console.Out.WriteLineAsync(DescribeOutcome(outcome));
+                await Console.Out.WriteLineAsync(DescribeOutcome(outcome)).ConfigureAwait(true);
             }
 
             return;
@@ -435,22 +418,22 @@ public class UnlistCommand
 
         if (unlisted.Count > 0)
         {
-            await Console.Out.WriteLineAsync($"Versions Unlisted for Package: {options.PackageId}");
+            await Console.Out.WriteLineAsync($"Versions Unlisted for Package: {options.PackageId}").ConfigureAwait(true);
 
             foreach (PackageVersionOutcome outcome in unlisted)
             {
-                await Console.Out.WriteLineAsync(DescribeOutcome(outcome));
+                await Console.Out.WriteLineAsync(DescribeOutcome(outcome)).ConfigureAwait(true);
             }
         }
 
         if (notUnlisted.Count > 0)
         {
             await Console.Out.WriteLineAsync(
-                $"The following versions of {options.PackageId} could not be unlisted:");
+                $"The following versions of {options.PackageId} could not be unlisted:").ConfigureAwait(true);
 
             foreach (PackageVersionOutcome outcome in notUnlisted)
             {
-                await Console.Out.WriteLineAsync(DescribeOutcome(outcome));
+                await Console.Out.WriteLineAsync(DescribeOutcome(outcome)).ConfigureAwait(true);
             }
         }
     }
@@ -482,55 +465,13 @@ public class UnlistCommand
         return $"{{\"package\":{package},\"version\":{normalizedVersion},\"status\":{statusText}}}";
     }
 
-    /// <summary>
-    /// Maps a per-version outcome to its documented exit code. Every member of the closed vocabulary
-    /// is handled explicitly: a member added to the enum reaches the throwing catch-all
-    /// arm — C# forces that arm on an enum switch expression (CS8524) — and fails loudly here and in
-    /// <c>ToKebabCase</c> until its exit code is decided.
-    /// </summary>
-    internal static int ToExitCode(PackageVersionStatus status) => status switch
-    {
-        PackageVersionStatus.Unlisted => ExitSuccess,
-        PackageVersionStatus.AlreadyUnlisted => ExitSuccess,
-        PackageVersionStatus.NotOnServer => ExitFailure,
-        PackageVersionStatus.RateLimited => ExitRateLimited,
-        PackageVersionStatus.Failed => ExitFailure,
-        PackageVersionStatus.NotAttempted => ExitCancelled,
-        _ => throw new ArgumentOutOfRangeException(nameof(status), status,
-            $"Unhandled {nameof(PackageVersionStatus)} member: decide its exit code in {nameof(ToExitCode)}.")
-    };
-
-    /// <summary>
-    /// Folds one outcome's code into the run's code. Rate-limited outranks cancelled, which outranks
-    /// per-version failure: a rate-limit is the root cause of the NotAttempted outcomes behind it.
-    /// </summary>
-    private static int MergeExitCode(int current, int candidate)
-    {
-        if (current == ExitRateLimited || candidate == ExitRateLimited)
-        {
-            return ExitRateLimited;
-        }
-
-        if (current == ExitCancelled || candidate == ExitCancelled)
-        {
-            return ExitCancelled;
-        }
-
-        if (current == ExitFailure || candidate == ExitFailure)
-        {
-            return ExitFailure;
-        }
-
-        return ExitSuccess;
-    }
-
     private static string DescribeBucket(DryRunBucket bucket) => bucket switch
     {
         DryRunBucket.WouldUnlist => "would-unlist",
         DryRunBucket.AlreadyUnlisted => "already-unlisted",
         DryRunBucket.NotOnServer => "not-on-server",
         _ => throw new ArgumentOutOfRangeException(nameof(bucket), bucket,
-            $"Unhandled {nameof(DryRunBucket)} member.")
+            string.Format(Resources.Exceptions_DryRunBuckets_Unhandled, nameof(DryRunBucket)))
     };
 
     /// <summary>
@@ -543,7 +484,7 @@ public class UnlistCommand
         DryRunBucket.AlreadyUnlisted => PackageVersionStatus.AlreadyUnlisted,
         DryRunBucket.NotOnServer => PackageVersionStatus.NotOnServer,
         _ => throw new ArgumentOutOfRangeException(nameof(bucket), bucket,
-            $"Unhandled {nameof(DryRunBucket)} member.")
+            string.Format(Resources.Exceptions_BucketStatus_Unhandled, nameof(DryRunBucket)))
     };
 
     internal static IList<NuGetVersion> ParseVersions(string[] versions, bool throwOnError)
@@ -561,7 +502,8 @@ public class UnlistCommand
             else
             {
                 if(throwOnError)
-                    throw new ArgumentException("Invalid version string: " + versionString);
+                    throw new ArgumentException(string.Format(Resources.Exceptions_Versions_InvalidVersionString, versionString),
+                        nameof(versions));
             }
         }
 

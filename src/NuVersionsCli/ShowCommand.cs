@@ -1,5 +1,5 @@
 /*
-    NuVersions - Delist (unlist) NuGet package versions from a NuGet server
+    NuVersions
     Copyright (C) 2026 Alastair Lundy
 
     This program is free software: you can redistribute it and/or modify
@@ -18,11 +18,8 @@
 
 using System.ComponentModel;
 using System.Text.Json;
-using Microsoft.Extensions.DependencyInjection;
 using NuGet.Protocol.Core.Types;
 using NuGet.Versioning;
-using NuVersionsCli.Models;
-using NuVersionsLib.Models;
 
 namespace NuVersionsCli;
 
@@ -55,13 +52,14 @@ public class ShowCommand
     private const int ExitInterrupted = 130;
 
     private readonly IConfiguration _configuration;
-    private readonly IServiceProvider _serviceProvider;
+    private readonly IPackageVersionService _packageVersionService;
     private readonly string? _serverUrlGeneric;
 
-    public ShowCommand(IConfiguration configuration, IServiceProvider serviceProvider)
+    public ShowCommand(IConfiguration configuration,
+        IPackageVersionService packageVersionService)
     {
         _configuration = configuration;
-        _serviceProvider = serviceProvider;
+        _packageVersionService = packageVersionService;
 
         // Prefetched as a plain value so the command body holds no environment-variable lookups;
         // the precedence chain itself lives in UnlistOptions.ResolveServerUrl.
@@ -87,7 +85,7 @@ public class ShowCommand
     {
         if (string.IsNullOrWhiteSpace(PackageId))
         {
-            await Console.Error.WriteLineAsync("Error: Package id is required.");
+            await Console.Error.WriteLineAsync("Error: Package id is required.").ConfigureAwait(true);
             return ExitUsage;
         }
 
@@ -95,7 +93,7 @@ public class ShowCommand
             !string.Equals(OutputMode, "json", StringComparison.OrdinalIgnoreCase))
         {
             await Console.Error.WriteLineAsync(
-                "Error: Invalid output mode. Valid values are: text, JSON.");
+                "Error: Invalid output mode. Valid values are: text, JSON.").ConfigureAwait(true);
             return ExitUsage;
         }
 
@@ -112,14 +110,10 @@ public class ShowCommand
 
         try
         {
-            // Proving the composition root wiring before any work starts mirrors the unlist path.
-            IPackageVersionService versionService =
-                _serviceProvider.GetRequiredService<IPackageVersionService>();
-
             List<PackageVersionListingInfo> versions = [];
 
-            await foreach (PackageVersionListingInfo info in versionService.EnumerateAllPackageVersionsAsync(
-                               serverUrl, "show", PackageId, cancellationSource.Token))
+            await foreach (PackageVersionListingInfo info in _packageVersionService.EnumerateAllPackageVersionsAsync(
+                               serverUrl, "show", PackageId, cancellationSource.Token).ConfigureAwait(true))
             {
                 versions.Add(info);
             }
@@ -128,7 +122,7 @@ public class ShowCommand
 
             foreach (PackageVersionListingInfo info in versions.OrderBy(static v => v.PackageVersion))
             {
-                await Console.Out.WriteLineAsync(DescribeListing(PackageId, info, json));
+                await Console.Out.WriteLineAsync(DescribeListing(PackageId, info, json)).ConfigureAwait(true);
             }
 
             return ExitSuccess;
@@ -136,18 +130,18 @@ public class ShowCommand
         catch (ArgumentException exception)
         {
             // Package-not-found-on-server is thrown by the composing services.
-            await Console.Error.WriteLineAsync(exception.Message);
+            await Console.Error.WriteLineAsync(exception.Message).ConfigureAwait(true);
             return ExitUsage;
         }
         catch (NuGetProtocolException exception)
         {
-            await Console.Error.WriteLineAsync(exception.Message);
+            await Console.Error.WriteLineAsync(exception.Message).ConfigureAwait(true);
             return ExitFailure;
         }
         catch (InvalidOperationException exception)
         {
             // The library reports an unavailable NuGet.Protocol resource with this type.
-            await Console.Error.WriteLineAsync(exception.Message);
+            await Console.Error.WriteLineAsync(exception.Message).ConfigureAwait(true);
             return ExitFailure;
         }
         catch (OperationCanceledException)

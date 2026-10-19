@@ -65,7 +65,7 @@ public class NuGetVersionParsingProperties
         NuGetVersion.TryParse(v1.ToNormalizedString(), out NuGetVersion? reparsed1);
         NuGetVersion.TryParse(v2.ToNormalizedString(), out NuGetVersion? reparsed2);
 
-        int reparsedComparison = comparer.Compare(reparsed1!, reparsed2!);
+        int reparsedComparison = comparer.Compare(reparsed1, reparsed2);
 
         return originalComparison == reparsedComparison;
     }

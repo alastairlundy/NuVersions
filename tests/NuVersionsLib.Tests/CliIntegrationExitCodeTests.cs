@@ -20,10 +20,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using NuGet.Versioning;
 using NuVersionsCli;
-using NuVersionsLib.Abstractions;
 using NuVersionsLib.Detectors;
 using NuVersionsLib.Detectors.Abstractions;
-using NuVersionsLib.Models;
+using NuVersionsLib.Tests.TransportDoubles;
 
 namespace NuVersionsLib.Tests;
 
@@ -49,7 +48,7 @@ public class CliIntegrationExitCodeTests
         CommandRun run = await CliIntegrationHarness.RunAsync(
             RealRunArgs(server, packageId, "1.0.0", "1.0.1"));
 
-        await Assert.That(run.ExitCode).IsEqualTo(UnlistCommand.ExitSuccess);
+        await Assert.That(run.ExitCode).IsEqualTo(ExitCodeHelpers.ExitSuccess);
         await Assert.That(server.DeleteRequests.Count).IsEqualTo(2);
         await Assert.That(run.StdErr).IsEmpty();
     }
@@ -64,7 +63,7 @@ public class CliIntegrationExitCodeTests
         CommandRun run = await CliIntegrationHarness.RunAsync(
             RealRunArgs(server, packageId, "1.0.0"));
 
-        await Assert.That(run.ExitCode).IsEqualTo(UnlistCommand.ExitSuccess);
+        await Assert.That(run.ExitCode).IsEqualTo(ExitCodeHelpers.ExitSuccess);
         await Assert.That(run.StdOut).Contains("Status=already-unlisted");
         // The bucket reported it from listing metadata: no delete request was worth sending.
         await Assert.That(server.DeleteRequests).IsEmpty();
@@ -80,7 +79,7 @@ public class CliIntegrationExitCodeTests
         CommandRun run = await CliIntegrationHarness.RunAsync(
             RealRunArgs(server, packageId, "1.0.0", "9.9.9"));
 
-        await Assert.That(run.ExitCode).IsEqualTo(UnlistCommand.ExitFailure);
+        await Assert.That(run.ExitCode).IsEqualTo(ExitCodeHelpers.ExitFailure);
         await Assert.That(run.StdOut).Contains("Version=9.9.9 Status=not-on-server");
         await Assert.That(run.StdOut).Contains("Version=1.0.0 Status=unlisted");
         // The absent version never reaches the server; the listed one still does.
@@ -99,7 +98,7 @@ public class CliIntegrationExitCodeTests
         CommandRun run = await CliIntegrationHarness.RunAsync(
             RealRunArgs(server, packageId, "1.0.0"));
 
-        await Assert.That(run.ExitCode).IsEqualTo(UnlistCommand.ExitFailure);
+        await Assert.That(run.ExitCode).IsEqualTo(ExitCodeHelpers.ExitFailure);
         await Assert.That(run.StdOut).Contains("Version=1.0.0 Status=failed");
         await Assert.That(server.DeleteRequests.Count).IsEqualTo(1);
     }
@@ -117,7 +116,7 @@ public class CliIntegrationExitCodeTests
             "--backend", "bogus",
             "1.0.0");
 
-        await Assert.That(run.ExitCode).IsEqualTo(UnlistCommand.ExitUsage);
+        await Assert.That(run.ExitCode).IsEqualTo(ExitCodeHelpers.ExitUsage);
         await Assert.That(run.StdErr).Contains("Invalid backend value");
         await Assert.That(run.StdOut).IsEmpty();
         await Assert.That(server.Requests).IsEmpty();
@@ -132,7 +131,7 @@ public class CliIntegrationExitCodeTests
         CommandRun run = await CliIntegrationHarness.RunAsync(
             RealRunArgs(server, packageId, "1.0.x"));
 
-        await Assert.That(run.ExitCode).IsEqualTo(UnlistCommand.ExitUsage);
+        await Assert.That(run.ExitCode).IsEqualTo(ExitCodeHelpers.ExitUsage);
         await Assert.That(run.StdErr).Contains("Invalid version string: 1.0.x");
         await Assert.That(run.StdOut).IsEmpty();
         await Assert.That(server.Requests).IsEmpty();
@@ -146,7 +145,7 @@ public class CliIntegrationExitCodeTests
         CommandRun run = await CliIntegrationHarness.RunAsync(
             RealRunArgs(server, "No.Such.Package.On.This.Server", "1.0.0"));
 
-        await Assert.That(run.ExitCode).IsEqualTo(UnlistCommand.ExitUsage);
+        await Assert.That(run.ExitCode).IsEqualTo(ExitCodeHelpers.ExitUsage);
         await Assert.That(run.StdErr).Contains("No.Such.Package.On.This.Server");
         await Assert.That(run.StdOut).IsEmpty();
         await Assert.That(server.DeleteRequests).IsEmpty();
@@ -163,7 +162,7 @@ public class CliIntegrationExitCodeTests
         CommandRun run = await CliIntegrationHarness.RunAsync(
             RealRunArgs(server, packageId, "1.0.0", "1.0.1"));
 
-        await Assert.That(run.ExitCode).IsEqualTo(UnlistCommand.ExitRateLimited);
+        await Assert.That(run.ExitCode).IsEqualTo(ExitCodeHelpers.ExitRateLimited);
         await Assert.That(run.StdOut).Contains("Version=1.0.0 Status=rate-limited");
         await Assert.That(run.StdOut).Contains("Version=1.0.1 Status=not-attempted");
         // Server-side proof of fail-fast: exactly one delete reached the server, so the second
@@ -180,7 +179,7 @@ public class CliIntegrationExitCodeTests
 
         CommandRun run = await RunInterruptedAsync(server, packageId);
 
-        await Assert.That(run.ExitCode).IsEqualTo(UnlistCommand.ExitInterrupted);
+        await Assert.That(run.ExitCode).IsEqualTo(ExitCodeHelpers.ExitInterrupted);
         await Assert.That(run.StdOut).IsEmpty();
         await Assert.That(run.StdErr).IsEmpty();
         // The run really was in flight: the service index and availability reads reached the server,
@@ -202,7 +201,7 @@ public class CliIntegrationExitCodeTests
             "--dry-run",
             "1.0.0", "1.0.1");
 
-        await Assert.That(run.ExitCode).IsEqualTo(UnlistCommand.ExitSuccess);
+        await Assert.That(run.ExitCode).IsEqualTo(ExitCodeHelpers.ExitSuccess);
         await Assert.That(run.ExitCode is 0 or 1 or 2).IsTrue();
         await Assert.That(run.StdOut).Contains("Version=1.0.0 Bucket=would-unlist");
         await Assert.That(run.StdOut).Contains("Version=1.0.1 Bucket=already-unlisted");
@@ -223,7 +222,7 @@ public class CliIntegrationExitCodeTests
             "--dry-run",
             "1.0.0", "9.9.9");
 
-        await Assert.That(run.ExitCode).IsEqualTo(UnlistCommand.ExitFailure);
+        await Assert.That(run.ExitCode).IsEqualTo(ExitCodeHelpers.ExitFailure);
         await Assert.That(run.ExitCode is 0 or 1 or 2).IsTrue();
         await Assert.That(run.StdOut).Contains("Version=9.9.9 Bucket=not-on-server");
         await Assert.That(server.DeleteRequests).IsEmpty();
@@ -240,7 +239,7 @@ public class CliIntegrationExitCodeTests
             "--dry-run",
             "1.0.0");
 
-        await Assert.That(run.ExitCode).IsEqualTo(UnlistCommand.ExitUsage);
+        await Assert.That(run.ExitCode).IsEqualTo(ExitCodeHelpers.ExitUsage);
         await Assert.That(run.ExitCode is 0 or 1 or 2).IsTrue();
         await Assert.That(run.StdErr).Contains("No.Such.Package.In.A.Dry.Run");
         await Assert.That(run.StdOut).IsEmpty();
@@ -257,7 +256,7 @@ public class CliIntegrationExitCodeTests
 
         // README "Exit codes": command lines the argument parser rejects exit 1 with the parser's
         // message on stderr, before the CLI's own validation runs and before any request is made.
-        await Assert.That(run.ExitCode).IsEqualTo(UnlistCommand.ExitFailure);
+        await Assert.That(run.ExitCode).IsEqualTo(ExitCodeHelpers.ExitFailure);
         await Assert.That(run.StdErr).Contains("--package-id");
         await Assert.That(run.StdOut).IsEmpty();
         await Assert.That(server.Requests).IsEmpty();
@@ -276,7 +275,7 @@ public class CliIntegrationExitCodeTests
 
         // The other parser-level rejection named in README "Exit codes": the option is present but
         // has no value, so the run is refused before it starts.
-        await Assert.That(run.ExitCode).IsEqualTo(UnlistCommand.ExitFailure);
+        await Assert.That(run.ExitCode).IsEqualTo(ExitCodeHelpers.ExitFailure);
         await Assert.That(run.StdErr).Contains("--api-key");
         await Assert.That(run.StdOut).IsEmpty();
         await Assert.That(server.Requests).IsEmpty();
@@ -298,7 +297,7 @@ public class CliIntegrationExitCodeTests
             "--typo-dry-run",
             "1.0.0");
 
-        await Assert.That(run.ExitCode).IsEqualTo(UnlistCommand.ExitUsage);
+        await Assert.That(run.ExitCode).IsEqualTo(ExitCodeHelpers.ExitUsage);
         await Assert.That(run.StdErr).Contains("--typo-dry-run");
         await Assert.That(run.StdOut).IsEmpty();
         await Assert.That(server.Requests).IsEmpty();
@@ -341,7 +340,10 @@ public class CliIntegrationExitCodeTests
 
         await using ServiceProvider provider = services.BuildServiceProvider();
 
-        UnlistCommand command = new(new ConfigurationBuilder().Build(), provider)
+        UnlistCommand command = new(new ConfigurationBuilder().Build(),
+            provider.GetRequiredService<IPackageVersionService>(),
+            provider.GetRequiredService<IPackageAvailabilityDetector>()
+            , provider)
         {
             PackageId = packageId,
             Versions = ["1.0.0"],

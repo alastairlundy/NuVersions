@@ -16,9 +16,6 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-using NuVersionsCli.Helpers;
-using NuVersionsLib.Models;
-
 namespace NuVersionsLib.Tests;
 
 /// <summary>

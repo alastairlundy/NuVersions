@@ -1,5 +1,5 @@
 /*
-    NuVersions - Delist (unlist) NuGet package versions from a NuGet server
+    NuVersions
     Copyright (C) 2026 Alastair Lundy
 
     This program is free software: you can redistribute it and/or modify
@@ -20,7 +20,7 @@ namespace NuVersionsCli;
 
 /// <summary>
 /// The root <c>nuversions</c> command. A small toolbox over per-version NuGet facts:
-/// <c>show</c> reads the listing state of every version of a package, <c>unlist</c> delists
+/// <c>show</c> reads the listing state of every version of a package, <c>unlist</c> unlists
 /// versions. Both share one exit-code shapes and one NDJSON schema.
 /// </summary>
 /// <remarks>

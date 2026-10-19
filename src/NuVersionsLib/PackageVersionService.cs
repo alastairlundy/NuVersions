@@ -132,7 +132,7 @@ public class PackageVersionService : IPackageVersionService
         bool packageExists = await _packageAvailabilityDetector.CheckPackageExistsAsync(nugetApiUrl, packageId, cancellationToken).ConfigureAwait(false);
 
         if (!packageExists)
-            throw new ArgumentException($"Package with Id of '{packageId}' does not exist.");
+            throw new ArgumentException(string.Format(Resources.Exceptions_PackageIds_PackagesDoesntExist, packageId), nameof(packageId));
 
         List<(NuGetVersion Version, bool IsListed)> metadata = await FetchPackageMetadataAsync(nugetApiUrl, nugetApiKey, packageId, includePreReleaseVersions: true, cancellationToken).ConfigureAwait(false);
 
@@ -165,7 +165,8 @@ public class PackageVersionService : IPackageVersionService
         bool packageExists = await _packageAvailabilityDetector.CheckPackageExistsAsync(nugetApiUrl, packageId, cancellationToken).ConfigureAwait(false);
 
         if (!packageExists)
-            throw new ArgumentException($"Package with Id of '{packageId}' does not exist.");
+            throw new ArgumentException(string.Format(Resources.Exceptions_Package_NotFoundOnServer, packageId),
+                nameof(packageId));
 
         List<(NuGetVersion Version, bool IsListed)> metadata = await FetchPackageMetadataAsync(nugetApiUrl, nugetApiKey, packageId, includePreReleaseVersions: true, cancellationToken).ConfigureAwait(false);
 
@@ -269,6 +270,7 @@ public class PackageVersionService : IPackageVersionService
 
     private SourceRepository GetRepoInfo(string nugetApiUrl) => Repository.Factory.GetCoreV3(nugetApiUrl);
 
+    //TODO: Find out why the "nugetApiKey" param is required if unused
     private async Task<List<(NuGetVersion Version, bool IsListed)>> FetchPackageMetadataAsync(string nugetApiUrl,
         string nugetApiKey, string packageId, bool includePreReleaseVersions, CancellationToken cancellationToken)
     {
@@ -277,7 +279,8 @@ public class PackageVersionService : IPackageVersionService
         using SourceCacheContext cacheContext = new SourceCacheContext();
 
         PackageMetadataResource? metadataResource =
-            await repoInfo.GetResourceAsync<PackageMetadataResource>(cancellationToken).ConfigureAwait(false);
+            await repoInfo.GetResourceAsync<PackageMetadataResource>(cancellationToken)
+                .ConfigureAwait(false);
 
         if (metadataResource is null)
             throw new InvalidOperationException($"Package metadata resource is not available for this source: {nugetApiUrl}");

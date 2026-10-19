@@ -49,6 +49,7 @@
         <PackageVersion>0.3.0</PackageVersion>
         <AssemblyVersion>0.3.0.0</AssemblyVersion>
         <FileVersion>0.3.0.0</FileVersion>
+        <Nullable>enable</Nullable>
     </PropertyGroup>
 
     <ItemGroup>
@@ -59,6 +60,10 @@
     <ItemGroup>
       <PackageReference Include="CliInvoke" />
       <PackageReference Include="DotMake.CommandLine"/>
+      <PackageReference Include="Meziantou.Analyzer">
+        <PrivateAssets>all</PrivateAssets>
+        <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      </PackageReference>
       <PackageReference Include="Microsoft.Extensions.Configuration"/>
       <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables"/>
       <PackageReference Include="Microsoft.Extensions.DependencyInjection"/>

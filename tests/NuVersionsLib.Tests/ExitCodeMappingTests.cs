@@ -18,7 +18,6 @@
 
 using NuGet.Versioning;
 using NuVersionsCli;
-using NuVersionsLib.Models;
 
 namespace NuVersionsLib.Tests;
 
@@ -40,7 +39,7 @@ public class ExitCodeMappingTests
     public async Task ToExitCode_MapsEveryStatusMemberToItsDocumentedCode(
         PackageVersionStatus status, int expected)
     {
-        await Assert.That(UnlistCommand.ToExitCode(status)).IsEqualTo(expected);
+        await Assert.That(ExitCodeHelpers.ToExitCode(status)).IsEqualTo(expected);
     }
 
     [Test]
@@ -51,11 +50,11 @@ public class ExitCodeMappingTests
         // constant), while the array below still pins each documented code to its literal value.
         int[] codes =
         [
-            UnlistCommand.ExitSuccess, UnlistCommand.ExitFailure, UnlistCommand.ExitUsage,
-            UnlistCommand.ExitRateLimited, UnlistCommand.ExitCancelled, UnlistCommand.ExitInterrupted
+            ExitCodeHelpers.ExitSuccess, ExitCodeHelpers.ExitFailure, ExitCodeHelpers.ExitUsage,
+            ExitCodeHelpers.ExitRateLimited, ExitCodeHelpers.ExitCancelled, ExitCodeHelpers.ExitInterrupted
         ];
 
-        await Assert.That(codes).IsEquivalentTo(new[] { 0, 1, 2, 3, 4, 130 });
+        await Assert.That(codes).IsEquivalentTo([0, 1, 2, 3, 4, 130]);
     }
 
     [Test]
@@ -63,15 +62,15 @@ public class ExitCodeMappingTests
     {
         NuGetVersion version = NuGetVersion.Parse("1.0.0");
         UnlistCommand command = UnlistCommandHarness.CreateCommand(
-            packageId: "Demo.Package", versions: ["1.0.0"], dryRun: true,
-            listingInfo: new Dictionary<NuGetVersion, PackageVersionListingInfo>
+            packageId: "Demo.Package", ["1.0.0"], dryRun: true,
+            new Dictionary<NuGetVersion, PackageVersionListingInfo>
             {
                 [version] = UnlistCommandHarness.ListedInfo(version)
             });
 
         CommandRun run = await UnlistCommandHarness.RunAsync(command);
 
-        await Assert.That(run.ExitCode).IsEqualTo(UnlistCommand.ExitSuccess);
+        await Assert.That(run.ExitCode).IsEqualTo(ExitCodeHelpers.ExitSuccess);
         await Assert.That(run.ExitCode is 0 or 1 or 2).IsTrue();
     }
 
@@ -81,14 +80,14 @@ public class ExitCodeMappingTests
         NuGetVersion version = NuGetVersion.Parse("1.0.0");
         UnlistCommand command = UnlistCommandHarness.CreateCommand(
             packageId: "Demo.Package", versions: ["1.0.0", "9.9.9"], dryRun: true,
-            listingInfo: new Dictionary<NuGetVersion, PackageVersionListingInfo>
+            new Dictionary<NuGetVersion, PackageVersionListingInfo>
             {
                 [version] = UnlistCommandHarness.ListedInfo(version)
             });
 
         CommandRun run = await UnlistCommandHarness.RunAsync(command);
 
-        await Assert.That(run.ExitCode).IsEqualTo(UnlistCommand.ExitFailure);
+        await Assert.That(run.ExitCode).IsEqualTo(ExitCodeHelpers.ExitFailure);
         await Assert.That(run.ExitCode is 0 or 1 or 2).IsTrue();
     }
 
@@ -96,11 +95,11 @@ public class ExitCodeMappingTests
     public async Task DryRun_WithInvalidOptions_NeverExitsOutsideZeroOneTwo()
     {
         UnlistCommand command = UnlistCommandHarness.CreateCommand(
-            packageId: "   ", versions: ["1.0.0"], dryRun: true);
+            packageId: "   ", ["1.0.0"], dryRun: true);
 
         CommandRun run = await UnlistCommandHarness.RunAsync(command);
 
-        await Assert.That(run.ExitCode).IsEqualTo(UnlistCommand.ExitUsage);
+        await Assert.That(run.ExitCode).IsEqualTo(ExitCodeHelpers.ExitUsage);
         await Assert.That(run.ExitCode is 0 or 1 or 2).IsTrue();
     }
 }

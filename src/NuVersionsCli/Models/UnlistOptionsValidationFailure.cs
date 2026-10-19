@@ -1,5 +1,5 @@
 /*
-    NuVersions - Delist (unlist) NuGet package versions from a NuGet server
+    NuVersions
     Copyright (C) 2026 Alastair Lundy
 
     This program is free software: you can redistribute it and/or modify

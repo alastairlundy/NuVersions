@@ -22,7 +22,6 @@ using DotMake.CommandLine;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using NuVersionsCli;
-using NuVersionsLib.Abstractions;
 using NuVersionsLib.Detectors;
 using NuVersionsLib.Detectors.Abstractions;
 

@@ -1,5 +1,5 @@
 /*
-    NuVersions - Delist (unlist) NuGet package versions from a NuGet server
+    NuVersions
     Copyright (C) 2026 Alastair Lundy
 
     This program is free software: you can redistribute it and/or modify
@@ -15,8 +15,6 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-
-using NuVersionsLib.Models;
 
 namespace NuVersionsCli.Helpers;
 
@@ -42,7 +40,7 @@ internal static class PackageVersionStatusExtensions
             PackageVersionStatus.Failed => "failed",
             PackageVersionStatus.NotAttempted => "not-attempted",
             _ => throw new ArgumentOutOfRangeException(nameof(status), status,
-                $"Unhandled {nameof(PackageVersionStatus)} member: add its kebab-case spelling in {nameof(ToKebabCase)}.")
+                string.Format(Resources.Exceptions_VersionStatus_Unhandled, nameof(PackageVersionStatus), nameof(ToKebabCase))),
         };
     }
 }

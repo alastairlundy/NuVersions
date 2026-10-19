@@ -18,7 +18,6 @@
 
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using NuVersionsCli;
 
 namespace NuVersionsLib.Tests;
 
@@ -52,7 +51,7 @@ public class CliIntegrationOutputTests
         await Assert.That(lines[3]).IsEqualTo("Version=9.9.9 Status=not-on-server");
         // Results and summaries belong to stdout; this run produced no diagnostics at all.
         await Assert.That(run.StdErr).IsEmpty();
-        await Assert.That(run.ExitCode).IsEqualTo(UnlistCommand.ExitFailure);
+        await Assert.That(run.ExitCode).IsEqualTo(ExitCodeHelpers.ExitFailure);
     }
 
     [Test]
@@ -90,7 +89,7 @@ public class CliIntegrationOutputTests
         string packageId = NewPackageId("JsonOutput");
         server.AddPackage(packageId, ("1.0.0", true), ("1.0.1", false));
 
-        // --non-interactive is deliberately also set: --output json takes precedence over it (README).
+        // --non-interactive is deliberately also set: --output JSON takes precedence over it (README).
         CommandRun run = await CliIntegrationHarness.RunAsync(
             RealRunArgs(server, packageId, ["--output", "json", "--non-interactive"],
                 "1.0.0", "1.0.1", "9.9.9"));
@@ -134,7 +133,7 @@ public class CliIntegrationOutputTests
             "--backend", "bogus",
             "1.0.0");
 
-        await Assert.That(run.ExitCode).IsEqualTo(UnlistCommand.ExitUsage);
+        await Assert.That(run.ExitCode).IsEqualTo(ExitCodeHelpers.ExitUsage);
         // stderr stays human-readable in JSON mode: a plain diagnostic line, not a JSON payload.
         await Assert.That(run.StdErr).Contains("Error: Invalid backend value");
         await Assert.That(run.StdErr.Contains("\"status\"")).IsFalse();
@@ -151,7 +150,7 @@ public class CliIntegrationOutputTests
         CommandRun run = await CliIntegrationHarness.RunAsync(
             RealRunArgs(server, packageId, ["--output", "json"], "1.0.0"));
 
-        await Assert.That(run.ExitCode).IsEqualTo(UnlistCommand.ExitSuccess);
+        await Assert.That(run.ExitCode).IsEqualTo(ExitCodeHelpers.ExitSuccess);
         await Assert.That(run.StdOut.Contains(CliIntegrationHarness.TestApiKey)).IsFalse();
         await Assert.That(run.StdErr.Contains(CliIntegrationHarness.TestApiKey)).IsFalse();
 

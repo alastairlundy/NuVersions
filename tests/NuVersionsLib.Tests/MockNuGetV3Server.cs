@@ -57,7 +57,7 @@ internal sealed class MockNuGetV3Server : IDisposable
     private readonly Dictionary<string, int> _deleteResponseStatuses =
         new(StringComparer.OrdinalIgnoreCase);
     private readonly List<RecordedRequest> _requests = [];
-    private readonly object _gate = new();
+    private readonly Lock _gate = new();
     private readonly string _baseUrl;
     private Task _serveLoop = Task.CompletedTask;
 
@@ -220,7 +220,7 @@ internal sealed class MockNuGetV3Server : IDisposable
 
         byte[] payload = body is null ? [] : Encoding.UTF8.GetBytes(body);
 
-        context.Response.StatusCode = (int)statusCode;
+        context.Response.StatusCode = statusCode;
 
         if (payload.Length > 0)
         {
@@ -257,8 +257,8 @@ internal sealed class MockNuGetV3Server : IDisposable
                 return new JsonObject
                 {
                     ["versions"] = new JsonArray(
-                        [.. flatVersions.Select(static version =>
-                            (JsonNode?)JsonValue.Create(version.Version.ToNormalizedString()))])
+                    [.. flatVersions.Select(static version =>
+                        (JsonNode?)JsonValue.Create(version.Version.ToNormalizedString()))])
                 }.ToJsonString();
             }
 
@@ -321,30 +321,30 @@ internal sealed class MockNuGetV3Server : IDisposable
         string LeafUrl(string version) => $"{_baseUrl}registration/{idLower}/{version}.json";
 
         JsonArray leaves =
-            [.. versions.Select(version => (JsonNode?)new JsonObject
+        [.. versions.Select(version => (JsonNode?)new JsonObject
+        {
+            ["@id"] = LeafUrl(version.Version.ToNormalizedString()),
+            ["packageContent"] =
+                $"{_baseUrl}flat/{idLower}/{version.Version.ToNormalizedString()}/" +
+                $"{idLower}.{version.Version.ToNormalizedString()}.nupkg",
+            ["catalogEntry"] = new JsonObject
             {
                 ["@id"] = LeafUrl(version.Version.ToNormalizedString()),
-                ["packageContent"] =
-                    $"{_baseUrl}flat/{idLower}/{version.Version.ToNormalizedString()}/" +
-                    $"{idLower}.{version.Version.ToNormalizedString()}.nupkg",
-                ["catalogEntry"] = new JsonObject
-                {
-                    ["@id"] = LeafUrl(version.Version.ToNormalizedString()),
-                    // "id", "version" and "listed" are the fields the production code reads: package
-                    // identity, the version key of the listing lookup, and the bucket decision.
-                    ["id"] = packageId,
-                    ["version"] = version.Version.ToNormalizedString(),
-                    ["listed"] = version.Listed
-                }
-            })];
+                // "id", "version" and "listed" are the fields the production code reads: package
+                // identity, the version key of the listing lookup, and the bucket decision.
+                ["id"] = packageId,
+                ["version"] = version.Version.ToNormalizedString(),
+                ["listed"] = version.Listed
+            }
+        })];
 
         // One page with every leaf inlined; the alternative (a page whose "items" is null, fetched
         // from the page "@id") needs a second endpoint this mock deliberately does not serve.
         JsonObject page = new()
         {
             ["@id"] = $"{_baseUrl}registration/{idLower}/index.json",
-            ["lower"] = versions.Select(static version => version.Version).Min()!.ToNormalizedString(),
-            ["upper"] = versions.Select(static version => version.Version).Max()!.ToNormalizedString(),
+            ["lower"] = versions.Select(static version => version.Version).Min()?.ToNormalizedString(),
+            ["upper"] = versions.Select(static version => version.Version).Max()?.ToNormalizedString(),
             ["count"] = versions.Count,
             ["items"] = leaves
         };
@@ -382,7 +382,7 @@ internal sealed class MockNuGetV3Server : IDisposable
             return false;
         }
 
-        value = rest[..(rest.Length - suffix.Length)];
+        value = rest[..^suffix.Length];
         return value.Length > 0;
     }
 

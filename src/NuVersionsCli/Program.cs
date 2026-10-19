@@ -54,4 +54,4 @@ return await Cli.RunAsync<RootCommand>(args, new CliSettings
     EnableDefaultExceptionHandler = true,
     EnableSuggestDirective = true,
     EnableEnvironmentVariablesDirective = true
-});
+}).ConfigureAwait(true);

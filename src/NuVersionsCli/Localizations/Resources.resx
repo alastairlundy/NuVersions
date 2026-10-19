@@ -27,4 +27,19 @@
     <data name="Errors.Input.NoVersionStrings" xml:space="preserve">
         <value>Error: No valid version strings provided.</value>
     </data>
+    <data name="Exceptions.ExitCodes.UnhandledStatus" xml:space="preserve">
+        <value>Unhandled {0} member: decide its exit code in {1}.</value>
+    </data>
+    <data name="Exceptions.BucketStatus.Unhandled" xml:space="preserve">
+        <value>Unhandled {0} member.</value>
+    </data>
+    <data name="Exceptions.DryRunBuckets.Unhandled" xml:space="preserve">
+        <value>Unhandled {0} member.</value>
+    </data>
+    <data name="Exceptions.VersionStatus.Unhandled" xml:space="preserve">
+        <value>Unhandled {0} member: add its kebab-case spelling in {1}.</value>
+    </data>
+    <data name="Exceptions.Versions.InvalidVersionString" xml:space="preserve">
+        <value>Invalid version string: {0}</value>
+    </data>
 </root>

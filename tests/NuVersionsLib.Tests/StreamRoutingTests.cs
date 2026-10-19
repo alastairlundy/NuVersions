@@ -20,17 +20,14 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using NuGet.Versioning;
 using NuVersionsCli;
-using NuVersionsLib.Abstractions;
-using NuVersionsLib.Detectors;
 using NuVersionsLib.Detectors.Abstractions;
-using NuVersionsLib.Models;
 
 namespace NuVersionsLib.Tests;
 
 /// <summary>
 /// Stream routing under the presentation contract: the dry-run plan and results go to
 /// stdout, every diagnostic goes to stderr. The routing decision lives in the command body, so
-/// these tests drive the real <see cref="UnlistCommand"/> over hand-written service fakes.
+/// these tests drive the real <see cref="UnlistCommand"/> over handwritten service fakes.
 /// </summary>
 [NotInParallel] // Console.SetOut/SetError are process-global; never interleave captured runs.
 public class StreamRoutingTests
@@ -39,11 +36,11 @@ public class StreamRoutingTests
     public async Task ValidationFailure_WritesOnlyToStderrAndExitsTwo()
     {
         UnlistCommand command = UnlistCommandHarness.CreateCommand(
-            packageId: "   ", versions: ["1.0.0"], dryRun: true);
+            packageId: "   ", ["1.0.0"], dryRun: true);
 
         CommandRun run = await UnlistCommandHarness.RunAsync(command);
 
-        await Assert.That(run.ExitCode).IsEqualTo(UnlistCommand.ExitUsage);
+        await Assert.That(run.ExitCode).IsEqualTo(ExitCodeHelpers.ExitUsage);
         await Assert.That(run.StdErr).IsNotEmpty();
         await Assert.That(run.StdOut).IsEmpty();
     }
@@ -54,8 +51,8 @@ public class StreamRoutingTests
         NuGetVersion first = NuGetVersion.Parse("1.0.0");
         NuGetVersion second = NuGetVersion.Parse("1.0.1");
         UnlistCommand command = UnlistCommandHarness.CreateCommand(
-            packageId: "Demo.Package", versions: ["1.0.0", "1.0.1"], dryRun: true,
-            listingInfo: new Dictionary<NuGetVersion, PackageVersionListingInfo>
+            packageId: "Demo.Package", ["1.0.0", "1.0.1"], dryRun: true,
+            new Dictionary<NuGetVersion, PackageVersionListingInfo>
             {
                 [first] = UnlistCommandHarness.ListedInfo(first),
                 [second] = UnlistCommandHarness.ListedInfo(second)
@@ -63,7 +60,7 @@ public class StreamRoutingTests
 
         CommandRun run = await UnlistCommandHarness.RunAsync(command);
 
-        await Assert.That(run.ExitCode).IsEqualTo(UnlistCommand.ExitSuccess);
+        await Assert.That(run.ExitCode).IsEqualTo(ExitCodeHelpers.ExitSuccess);
         await Assert.That(run.StdOut).Contains("Version=1.0.0 Bucket=would-unlist");
         await Assert.That(run.StdOut).Contains("Version=1.0.1 Bucket=would-unlist");
         await Assert.That(run.StdErr).IsEmpty();
@@ -74,15 +71,15 @@ public class StreamRoutingTests
     {
         NuGetVersion present = NuGetVersion.Parse("1.0.0");
         UnlistCommand command = UnlistCommandHarness.CreateCommand(
-            packageId: "Demo.Package", versions: ["1.0.0", "9.9.9"], dryRun: true,
-            listingInfo: new Dictionary<NuGetVersion, PackageVersionListingInfo>
+            packageId: "Demo.Package", ["1.0.0", "9.9.9"], dryRun: true,
+            new Dictionary<NuGetVersion, PackageVersionListingInfo>
             {
                 [present] = UnlistCommandHarness.ListedInfo(present)
             });
 
         CommandRun run = await UnlistCommandHarness.RunAsync(command);
 
-        await Assert.That(run.ExitCode).IsEqualTo(UnlistCommand.ExitFailure);
+        await Assert.That(run.ExitCode).IsEqualTo(ExitCodeHelpers.ExitFailure);
         await Assert.That(run.StdOut).Contains("Version=1.0.0 Bucket=would-unlist");
         await Assert.That(run.StdOut).Contains("Version=9.9.9 Bucket=not-on-server");
         await Assert.That(run.StdErr).IsEmpty();
@@ -122,7 +119,12 @@ internal static class UnlistCommandHarness
         // so even a dry run needs an "http" registration to exist.
         services.AddKeyedSingleton<IPackageUnlistService, UnusedUnlistService>("http");
 
-        UnlistCommand command = new(new ConfigurationBuilder().Build(), services.BuildServiceProvider())
+        IServiceProvider provider = services.BuildServiceProvider();
+
+        UnlistCommand command = new(new ConfigurationBuilder().Build(),
+            provider.GetRequiredService<IPackageVersionService>(),
+            provider.GetRequiredService<IPackageAvailabilityDetector>(),
+            provider)
         {
             PackageId = packageId,
             Versions = versions,
@@ -138,8 +140,8 @@ internal static class UnlistCommandHarness
     {
         TextWriter originalOut = Console.Out;
         TextWriter originalError = Console.Error;
-        using StringWriter stdout = new();
-        using StringWriter stderr = new();
+        await using StringWriter stdout = new();
+        await using StringWriter stderr = new();
 
         try
         {

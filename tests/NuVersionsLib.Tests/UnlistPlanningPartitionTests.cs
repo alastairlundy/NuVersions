@@ -18,7 +18,7 @@
 
 using NuGet.Versioning;
 using NuVersionsLib.Internal;
-using NuVersionsLib.Models;
+// ReSharper disable NullableWarningSuppressionIsUsed
 
 namespace NuVersionsLib.Tests;
 

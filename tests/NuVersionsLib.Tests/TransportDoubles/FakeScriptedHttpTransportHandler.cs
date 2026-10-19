@@ -18,7 +18,7 @@
 
 using System.Net;
 
-namespace NuVersionsLib.Tests;
+namespace NuVersionsLib.Tests.TransportDoubles;
 
 /// <summary>One request as observed by <see cref="FakeScriptedHttpTransportHandler"/>.</summary>
 internal sealed record DispatchedRequest(string Method, string RequestUri);

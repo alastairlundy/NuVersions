@@ -13,6 +13,7 @@
         <RepositoryUrl>https://github.com/alastairlundy/NuVersions</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
         <PackageTags>unlist;nuget;dotnet-tool;cli</PackageTags>
+        <Nullable>enable</Nullable>
     </PropertyGroup>
 
     <ItemGroup>

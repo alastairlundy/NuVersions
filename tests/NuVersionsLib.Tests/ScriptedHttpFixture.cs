@@ -19,6 +19,7 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using NuVersionsLib.Tests.TransportDoubles;
 
 namespace NuVersionsLib.Tests;
 

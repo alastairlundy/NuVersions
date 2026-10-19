@@ -19,8 +19,9 @@
 using System.Net;
 using CliInvoke.Core;
 using NuGet.Versioning;
-using NuVersionsLib.Abstractions;
-using NuVersionsLib.Models;
+using NuVersionsLib.Tests.TransportDoubles;
+
+// ReSharper disable AccessToDisposedClosure
 
 namespace NuVersionsLib.Tests;
 
@@ -201,7 +202,7 @@ public class PackageUnlistServiceTests
         try
         {
             await foreach (PackageVersionOutcome outcome in service.RequestPackageUnlistingAsync(
-                ServerUrl, ApiKey, PackageId, [version], CancellationToken.None))
+                               ServerUrl, ApiKey, PackageId, [version], CancellationToken.None))
             {
                 outcomes.Add(outcome);
             }
@@ -213,10 +214,10 @@ public class PackageUnlistServiceTests
 
         await Assert.That(caught).IsNotNull();
 
-        ArgumentException failure = caught!;
+        ArgumentException failure = caught;
 
-        await Assert.That(failure.ParamName).IsEqualTo("packageId");
-        await Assert.That(failure.Message).Contains(PackageId);
+        await Assert.That(failure?.ParamName).IsEqualTo("packageId");
+        await Assert.That(failure?.Message).Contains(PackageId);
         await Assert.That(outcomes).IsEmpty();
 
         // Checked before the count assertion: a stray dispatch turns into a Failed outcome, so the
@@ -256,7 +257,7 @@ public class PackageUnlistServiceTests
 
         await Assert.That(outcome.Status).IsEqualTo(PackageVersionStatus.AlreadyUnlisted);
         await Assert.That(handler.DispatchCount).IsEqualTo(1);
-        // The delete went to the publish URL advertised by the loopback service index, not to the
+        // The "delete" went to the publish URL advertised by the loopback service index, not to the
         // service index itself.
         await Assert.That(handler.DispatchedRequests[0].RequestUri)
             .IsEqualTo($"{server.PublishUrl}{PackageId}/1.0.0");
@@ -420,7 +421,7 @@ public class PackageUnlistServiceTests
         FakeScriptedProcessInvoker invoker = new();
         invoker.EnqueueException(new OperationCanceledException("simulated Ctrl-C during process run"));
         CancellationTokenSource cancelled = new();
-        cancelled.Cancel();
+        await cancelled.CancelAsync();
 
         await Assert.That(async () => await UnlistSingleSdkAsync(invoker, cancelled.Token))
             .ThrowsExactly<OperationCanceledException>();
@@ -462,7 +463,7 @@ public class PackageUnlistServiceTests
         List<PackageVersionOutcome> outcomes = [];
 
         await foreach (PackageVersionOutcome outcome in service.RequestPackageUnlistingAsync(
-            serverUrl, ApiKey, PackageId, versions, cancellationToken))
+                           serverUrl, ApiKey, PackageId, versions, cancellationToken))
         {
             outcomes.Add(outcome);
         }

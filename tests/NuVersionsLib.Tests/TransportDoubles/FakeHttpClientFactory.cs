@@ -16,7 +16,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-namespace NuVersionsLib.Tests;
+namespace NuVersionsLib.Tests.TransportDoubles;
 
 /// <summary>
 /// An <see cref="IHttpClientFactory"/> double handing every client back over one shared

@@ -16,8 +16,6 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-using NuVersionsCli;
-
 namespace NuVersionsLib.Tests;
 
 /// <summary>
@@ -42,7 +40,7 @@ public class CliShowCommandTests
             "--package-id", packageId,
             "--server-url", server.ServiceIndexUrl);
 
-        await Assert.That(run.ExitCode).IsEqualTo(UnlistCommand.ExitSuccess);
+        await Assert.That(run.ExitCode).IsEqualTo(ExitCodeHelpers.ExitSuccess);
         // Ascending, regardless of the order the feed reported them in.
         await Assert.That(run.StdOut).Contains("Version=1.0.0 Status=listed");
         await Assert.That(run.StdOut).Contains("Version=1.0.1 Status=unlisted");
@@ -67,7 +65,7 @@ public class CliShowCommandTests
             "--server-url", server.ServiceIndexUrl,
             "--output", "json");
 
-        await Assert.That(run.ExitCode).IsEqualTo(UnlistCommand.ExitSuccess);
+        await Assert.That(run.ExitCode).IsEqualTo(ExitCodeHelpers.ExitSuccess);
         await Assert.That(run.StdOut).Contains($"{{\"package\":\"{packageId}\",\"version\":\"1.0.0\",\"status\":\"listed\"}}");
         await Assert.That(run.StdOut).Contains($"{{\"package\":\"{packageId}\",\"version\":\"1.0.1\",\"status\":\"unlisted\"}}");
     }
@@ -84,7 +82,7 @@ public class CliShowCommandTests
             "--package-id", packageId,
             "--server-url", server.ServiceIndexUrl);
 
-        await Assert.That(run.ExitCode).IsEqualTo(UnlistCommand.ExitSuccess);
+        await Assert.That(run.ExitCode).IsEqualTo(ExitCodeHelpers.ExitSuccess);
         await Assert.That(server.DeleteRequests).IsEmpty();
         await Assert.That(server.Requests).IsNotEmpty();
         // The show path is credential-free: no request carries an API key header at all.
@@ -101,7 +99,7 @@ public class CliShowCommandTests
             "--package-id", "No.Such.Package.In.Show",
             "--server-url", server.ServiceIndexUrl);
 
-        await Assert.That(run.ExitCode).IsEqualTo(UnlistCommand.ExitUsage);
+        await Assert.That(run.ExitCode).IsEqualTo(ExitCodeHelpers.ExitUsage);
         await Assert.That(run.StdErr).Contains("No.Such.Package.In.Show");
         await Assert.That(run.StdOut).IsEmpty();
     }
@@ -119,7 +117,7 @@ public class CliShowCommandTests
             "--server-url", server.ServiceIndexUrl,
             "--output", "xml");
 
-        await Assert.That(run.ExitCode).IsEqualTo(UnlistCommand.ExitUsage);
+        await Assert.That(run.ExitCode).IsEqualTo(ExitCodeHelpers.ExitUsage);
         await Assert.That(run.StdErr).Contains("Invalid output mode");
         await Assert.That(run.StdOut).IsEmpty();
     }
