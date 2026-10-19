@@ -28,7 +28,11 @@
   `nuversions show` that reports whether each version of a package is listed or unlisted.
 - The unlist status vocabulary now matches nuget.org terminology: `unlisted` / `already-unlisted`
   (was `delisted` / `already-delisted`), with the same exit-code contract.
-- The environment-variable fallback prefix is now `NUVERSIONS_`; the generic `NUGET_*` names stay.</PackageReleaseNotes>
+- The environment-variable fallback prefix is now `NUVERSIONS_`; the generic `NUGET_*` names stay.
+- The domain vocabulary is unlist end to end: Delist becomes Unlist, Delisting becomes Unlisting,
+  Delisted becomes Unlisted, and Delete becomes Unlist at the contract level. The all-pre-release
+  option is now `--unlist-all` (was `--delist-all`). Terms are defined by the Unlist action entry
+  in GLOSSARY.md.</PackageReleaseNotes>
         <TargetFramework>net10.0</TargetFramework>
         <Version>0.3.0</Version>
         <PackageVersion>0.3.0</PackageVersion>

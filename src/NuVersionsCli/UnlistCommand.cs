@@ -90,15 +90,15 @@ public class UnlistCommand
         Arity = CliArgumentArity.ExactlyOne)]
     public string PackageId { get; set; } = string.Empty;
 
-    [CliOption(Name = "--delist-all")]
+    [CliOption(Name = "--unlist-all")]
     // ReSharper disable once RedundantDefaultMemberInitializer
-    public bool DelistAllVersions { get; set; } = false;
+    public bool UnlistAllVersions { get; set; } = false;
 
     [CliOption(Name = "--use-strict-parsing")]
     public bool UseStrictParsing { get; set; } = true;
 
     /// <summary>
-    /// The pre-release versions to unlist. Optional when <see cref="DelistAllVersions"/> is set.
+    /// The pre-release versions to unlist. Optional when <see cref="UnlistAllVersions"/> is set.
     /// </summary>
     [CliArgument(Name = "versions", Required = false)]
     public string[] Versions { get; set; } = [];
@@ -121,7 +121,7 @@ public class UnlistCommand
     public string Backend { get; set; } = "http";
 
     /// <summary>
-    /// Includes stable Major==0 versions when using --delist-all.
+    /// Includes stable Major==0 versions when using --unlist-all.
     /// </summary>
     [CliOption(Name = "--include-zero-major", Required = false)]
     public bool IncludeZeroMajor { get; set; } = false;
@@ -234,7 +234,7 @@ public class UnlistCommand
     {
         string[] requestedVersions = Versions;
 
-        if (!DelistAllVersions)
+        if (!UnlistAllVersions)
         {
             // Only version strings starting with a digit are considered; the rest are ignored.
             requestedVersions =
@@ -257,7 +257,7 @@ public class UnlistCommand
             nonInteractive: NonInteractive,
             includeZeroMajor: IncludeZeroMajor,
             useStrictParsing: UseStrictParsing,
-            delistAllVersions: DelistAllVersions,
+            unlistAllVersions: UnlistAllVersions,
             dryRun: DryRun,
             outputMode: OutputMode);
     }
@@ -298,7 +298,7 @@ public class UnlistCommand
 
         IAsyncEnumerable<PackageVersionOutcome> results;
 
-        if (options.DelistAllVersions)
+        if (options.UnlistAllVersions)
         {
             results = unlistService.RequestPackageUnlistingAsync(options.ServerUrl, options.ApiKey,
                 options.PackageId, options.IncludeZeroMajor, cancellationToken);
@@ -352,7 +352,7 @@ public class UnlistCommand
             return ExitUsage;
         }
 
-        IList<NuGetVersion> requestedVersions = options.DelistAllVersions
+        IList<NuGetVersion> requestedVersions = options.UnlistAllVersions
             ? await versionService.GetPrereleasePackageVersionsAsync(options.ServerUrl, readApiKey,
                 options.PackageId, options.IncludeZeroMajor, cancellationToken)
             : ParseVersions([.. options.Versions], options.UseStrictParsing);

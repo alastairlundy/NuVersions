@@ -37,7 +37,7 @@ public sealed record UnlistOptions
 
     public bool UseStrictParsing { get; init; } = true;
 
-    public bool DelistAllVersions { get; init; }
+    public bool UnlistAllVersions { get; init; }
 
     public bool DryRun { get; init; }
 
@@ -118,7 +118,7 @@ public sealed record UnlistOptions
         bool nonInteractive,
         bool includeZeroMajor,
         bool useStrictParsing,
-        bool delistAllVersions,
+        bool unlistAllVersions,
         bool dryRun,
         string? outputMode)
     {
@@ -132,7 +132,7 @@ public sealed record UnlistOptions
             NonInteractive = nonInteractive,
             IncludeZeroMajor = includeZeroMajor,
             UseStrictParsing = useStrictParsing,
-            DelistAllVersions = delistAllVersions,
+            UnlistAllVersions = unlistAllVersions,
             DryRun = dryRun,
             OutputMode = string.IsNullOrWhiteSpace(outputMode) ? DefaultOutputMode : outputMode,
         };
@@ -169,11 +169,11 @@ public sealed record UnlistOptions
                 "Invalid backend value. Valid values are: http, sdk."));
         }
 
-        if (!DelistAllVersions && Versions.Count == 0)
+        if (!UnlistAllVersions && Versions.Count == 0)
         {
             failures.Add(new UnlistOptionsValidationFailure(
                 nameof(Versions),
-                "At least one version string is required unless --delist-all is set."));
+                "At least one version string is required unless --unlist-all is set."));
         }
 
         if (!DryRun && string.IsNullOrEmpty(ApiKey))

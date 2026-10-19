@@ -23,6 +23,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `delisted`/`already-delisted` is `unlisted`/`already-unlisted`, and dry-run buckets render
   `would-unlist`. Everything about the run is otherwise identical: same statuses for
   `not-on-server`, `failed`, `rate-limited`, `not-attempted`, same exit codes, same NDJSON shape.
+- The domain vocabulary is unlist end to end, per four mappings: Delist becomes Unlist,
+  Delisting becomes Unlisting, Delisted becomes Unlisted, and Delete becomes Unlist at the
+  contract level. The all-pre-release option is now `--unlist-all` (was `--delist-all`).
+  Transport command names keep their wire spelling (HTTP DELETE, `dotnet nuget delete`).
+  What each term means is defined by the Unlist action entry in
+  [GLOSSARY.md](GLOSSARY.md).
 - The environment-variable fallback prefix is `NUVERSIONS_` (was `PRERELEASEDELIST_`); the
   generic `NUGET_API_KEY`/`NUGET_SERVER_URL` fallbacks are unchanged.
 - The library's outcome enum members follow the same rename (`PackageVersionStatus.Unlisted`,

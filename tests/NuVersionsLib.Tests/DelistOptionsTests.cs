@@ -81,7 +81,7 @@ public class DelistOptionsTests
             packageId: null, versions: null, apiKeyOption: null, apiKeyPrefixed: null, apiKeyGeneric: null,
             serverUrlOption: null, serverUrlPrefixed: null, serverUrlGeneric: null,
             backend: null, nonInteractive: false, includeZeroMajor: false, useStrictParsing: false,
-            delistAllVersions: false, dryRun: false, outputMode: null);
+            unlistAllVersions: false, dryRun: false, outputMode: null);
 
         await Assert.That(options.PackageId).IsEqualTo(string.Empty);
         await Assert.That(options.Versions).IsEmpty();
@@ -100,7 +100,7 @@ public class DelistOptionsTests
             packageId: "Demo.Package", versions: ["1.0.0"], apiKeyOption: null, apiKeyPrefixed: null,
             apiKeyGeneric: null, serverUrlOption: null, serverUrlPrefixed: null, serverUrlGeneric: null,
             backend: "  ", nonInteractive: false, includeZeroMajor: false, useStrictParsing: true,
-            delistAllVersions: false, dryRun: false, outputMode: "\t");
+            unlistAllVersions: false, dryRun: false, outputMode: "\t");
 
         await Assert.That(options.Backend).IsEqualTo(UnlistOptions.DefaultBackend);
         await Assert.That(options.OutputMode).IsEqualTo(UnlistOptions.DefaultOutputMode);
@@ -114,7 +114,7 @@ public class DelistOptionsTests
             apiKeyPrefixed: "prefixed-key", apiKeyGeneric: "generic-key",
             serverUrlOption: "https://option.example", serverUrlPrefixed: "https://prefixed.example",
             serverUrlGeneric: "https://generic.example", backend: "sdk", nonInteractive: true,
-            includeZeroMajor: true, useStrictParsing: false, delistAllVersions: true, dryRun: true,
+            includeZeroMajor: true, useStrictParsing: false, unlistAllVersions: true, dryRun: true,
             outputMode: "json");
 
         await Assert.That(options.PackageId).IsEqualTo("Demo.Package");
@@ -126,7 +126,7 @@ public class DelistOptionsTests
         await Assert.That(options.NonInteractive).IsTrue();
         await Assert.That(options.IncludeZeroMajor).IsTrue();
         await Assert.That(options.UseStrictParsing).IsFalse();
-        await Assert.That(options.DelistAllVersions).IsTrue();
+        await Assert.That(options.UnlistAllVersions).IsTrue();
         await Assert.That(options.DryRun).IsTrue();
     }
 
@@ -191,7 +191,7 @@ public class DelistOptionsTests
     }
 
     [Test]
-    public async Task Validate_NoVersionsFailsUnlessDelistAllIsSet()
+    public async Task Validate_NoVersionsFailsUnlessUnlistAllIsSet()
     {
         UnlistOptions noVersions = Valid() with { Versions = [] };
         IReadOnlyList<UnlistOptionsValidationFailure> failures = noVersions.Validate();
@@ -199,7 +199,7 @@ public class DelistOptionsTests
         await Assert.That(failures.Count).IsEqualTo(1);
         await Assert.That(failures[0].Field).IsEqualTo(nameof(UnlistOptions.Versions));
 
-        await Assert.That((Valid() with { Versions = [], DelistAllVersions = true }).Validate()).IsEmpty();
+        await Assert.That((Valid() with { Versions = [], UnlistAllVersions = true }).Validate()).IsEmpty();
         await Assert.That(Valid().Validate()).IsEmpty();
     }
 
@@ -228,7 +228,7 @@ public class DelistOptionsTests
             ApiKey = null,
             OutputMode = "xml",
             DryRun = false,
-            DelistAllVersions = false,
+            UnlistAllVersions = false,
         };
 
         IReadOnlyList<UnlistOptionsValidationFailure> failures = options.Validate();
