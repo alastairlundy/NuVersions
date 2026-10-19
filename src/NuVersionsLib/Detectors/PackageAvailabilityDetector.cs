@@ -34,7 +34,7 @@ public class PackageAvailabilityDetector : IPackageAvailabilityDetector
                 await repository.GetResourceAsync<FindPackageByIdResource>(cancellationToken).ConfigureAwait(false);
 
             if (searchResource is null)
-                throw new InvalidOperationException($"The FindPackageById resource is unavailable for '{nugetApiUrl}'.");
+                throw new InvalidOperationException(string.Format(Resources.Exceptions_NuGet_FindResources_FindByPackageId_Unavailable, nugetApiUrl));
 
             IEnumerable<NuGetVersion>? packageVersions = await searchResource.GetAllVersionsAsync(packageId,
                 cacheContext,

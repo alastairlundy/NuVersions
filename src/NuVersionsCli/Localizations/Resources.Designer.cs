@@ -130,5 +130,14 @@ namespace NuVersionsCli.Localizations {
                 return ResourceManager.GetString("Exceptions.VersionStatus.Unhandled", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Invalid output mode. Valid values are: text, JSON..
+        /// </summary>
+        internal static string Failures_OutputModes_InvalidOutputMode {
+            get {
+                return ResourceManager.GetString("Failures.OutputModes.InvalidOutputMode", resourceCulture);
+            }
+        }
     }
 }

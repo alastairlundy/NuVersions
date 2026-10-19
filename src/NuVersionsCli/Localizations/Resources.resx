@@ -42,4 +42,7 @@
     <data name="Exceptions.Versions.InvalidVersionString" xml:space="preserve">
         <value>Invalid version string: {0}</value>
     </data>
+    <data name="Failures.OutputModes.InvalidOutputMode" xml:space="preserve">
+        <value>Invalid output mode. Valid values are: text, JSON.</value>
+    </data>
 </root>

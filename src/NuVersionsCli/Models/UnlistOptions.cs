@@ -147,7 +147,7 @@ public sealed record UnlistOptions
         {
             failures.Add(new UnlistOptionsValidationFailure(
                 nameof(OutputMode),
-                "Invalid output mode. Valid values are: text, json."));
+                Resources.Failures_OutputModes_InvalidOutputMode));
         }
 
         return failures;

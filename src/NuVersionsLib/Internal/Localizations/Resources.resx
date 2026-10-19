@@ -27,4 +27,7 @@
     <data name="Exceptions.PackageIds.PackagesDoesntExist" xml:space="preserve">
         <value>Package with Id of '{0}' does not exist.</value>
     </data>
+    <data name="Exceptions.NuGet.FindResources.FindByPackageId.Unavailable" xml:space="preserve">
+        <value>The FindPackageById resource is unavailable for '{0}'.</value>
+    </data>
 </root>
