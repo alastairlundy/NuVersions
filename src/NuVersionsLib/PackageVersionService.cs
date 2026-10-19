@@ -134,7 +134,7 @@ public class PackageVersionService : IPackageVersionService
         if (!packageExists)
             throw new ArgumentException(string.Format(Resources.Exceptions_PackageIds_PackagesDoesntExist, packageId), nameof(packageId));
 
-        List<(NuGetVersion Version, bool IsListed)> metadata = await FetchPackageMetadataAsync(nugetApiUrl, nugetApiKey, packageId, includePreReleaseVersions: true, cancellationToken).ConfigureAwait(false);
+        List<(NuGetVersion Version, bool IsListed)> metadata = await FetchPackageMetadataAsync(nugetApiUrl, packageId, includePreReleaseVersions: true, cancellationToken).ConfigureAwait(false);
 
         foreach ((NuGetVersion version, bool isListed) in metadata)
         {
@@ -168,7 +168,7 @@ public class PackageVersionService : IPackageVersionService
             throw new ArgumentException(string.Format(Resources.Exceptions_Package_NotFoundOnServer, packageId),
                 nameof(packageId));
 
-        List<(NuGetVersion Version, bool IsListed)> metadata = await FetchPackageMetadataAsync(nugetApiUrl, nugetApiKey, packageId, includePreReleaseVersions: true, cancellationToken).ConfigureAwait(false);
+        List<(NuGetVersion Version, bool IsListed)> metadata = await FetchPackageMetadataAsync(nugetApiUrl, packageId, includePreReleaseVersions: true, cancellationToken).ConfigureAwait(false);
 
         return metadata.Select(m => m.Version).ToArray();
     }
@@ -237,7 +237,7 @@ public class PackageVersionService : IPackageVersionService
         ArgumentNullException.ThrowIfNull(packageVersions);
 
         List<(NuGetVersion Version, bool IsListed)> metadata =
-            await FetchPackageMetadataAsync(nugetApiUrl, nugetApiKey, packageId, includePreReleaseVersions, cancellationToken).ConfigureAwait(false);
+            await FetchPackageMetadataAsync(nugetApiUrl, packageId, includePreReleaseVersions, cancellationToken).ConfigureAwait(false);
 
         Dictionary<NuGetVersion, PackageVersionListingInfo> metadataLookup = metadata
             .Select(m => new PackageVersionListingInfo
@@ -270,9 +270,13 @@ public class PackageVersionService : IPackageVersionService
 
     private SourceRepository GetRepoInfo(string nugetApiUrl) => Repository.Factory.GetCoreV3(nugetApiUrl);
 
-    //TODO: Find out why the "nugetApiKey" param is required if unused
+    // No API key is threaded in here: the repository is built without credentials, so no key could
+    // reach the server, and the read endpoints nuget.org exposes need no authentication. The public
+    // methods still take a non-empty key so the read and write paths share one shape; this private
+    // helper has no use for it. Making the key meaningful on reads — for private feeds that require
+    // authentication — is tracked in TODO.md.
     private async Task<List<(NuGetVersion Version, bool IsListed)>> FetchPackageMetadataAsync(string nugetApiUrl,
-        string nugetApiKey, string packageId, bool includePreReleaseVersions, CancellationToken cancellationToken)
+        string packageId, bool includePreReleaseVersions, CancellationToken cancellationToken)
     {
         SourceRepository repoInfo = GetRepoInfo(nugetApiUrl);
 
