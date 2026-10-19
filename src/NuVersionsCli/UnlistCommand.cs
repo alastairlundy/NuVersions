@@ -67,9 +67,11 @@ public class UnlistCommand
         _serviceProvider = serviceProvider;
 
         // Prefetched as plain values so the command body holds no environment-variable lookups; the
-        // precedence chain itself lives in UnlistOptions.Create.
-        _apiKeyGeneric = Environment.GetEnvironmentVariable("NUGET_API_KEY");
-        _serverUrlGeneric = Environment.GetEnvironmentVariable("NUGET_SERVER_URL");
+        // precedence chain itself lives in ConfigurationValueHelpers.
+        _apiKeyGeneric = Environment.GetEnvironmentVariable(
+            ConfigurationValueHelpers.GenericApiKeyEnvironmentVariable);
+        _serverUrlGeneric = Environment.GetEnvironmentVariable(
+            ConfigurationValueHelpers.GenericServerUrlEnvironmentVariable);
     }
 
     // Initialized by DotMake option/argument binding after construction.
@@ -233,9 +235,9 @@ public class UnlistCommand
 
         return UnlistOptions.Create(
             PackageId, requestedVersions,
-            ApiKey, _configuration["NuGetApiKey"],
+            ApiKey, _configuration[ConfigurationValueHelpers.ApiKeyConfigurationKey],
             _apiKeyGeneric, ServerUrl,
-            _configuration["NuGetServerUrl"],
+            _configuration[ConfigurationValueHelpers.ServerUrlConfigurationKey],
             _serverUrlGeneric, Backend, NonInteractive,
             IncludeZeroMajor, UseStrictParsing, UnlistAllVersions,
             DryRun, OutputMode);

@@ -21,58 +21,12 @@ using NuVersionsCli.Models;
 namespace NuVersionsLib.Tests;
 
 /// <summary>
-/// <see cref="UnlistOptions"/> precedence resolution and mode-aware validation:
-/// option, then <c>NUVERSIONS_*</c>, then <c>NUGET_*</c>, then default — and every validation
-/// rule shown with both its failing and its passing shape.
+/// <see cref="UnlistOptions"/> construction and mode-aware validation: the documented defaults
+/// applied when nothing is supplied — and every validation rule shown with both its failing and
+/// its passing shape.
 /// </summary>
 public class DelistOptionsTests
 {
-    [Test]
-    public async Task ResolveServerUrl_PrefersOptionThenPrefixedThenGenericThenDefault()
-    {
-        await Assert.That(UnlistOptions.ResolveServerUrl(
-                "https://option.example", "https://prefixed.example", "https://generic.example"))
-            .IsEqualTo("https://option.example");
-        await Assert.That(UnlistOptions.ResolveServerUrl(
-                null, "https://prefixed.example", "https://generic.example"))
-            .IsEqualTo("https://prefixed.example");
-        await Assert.That(UnlistOptions.ResolveServerUrl(null, null, "https://generic.example"))
-            .IsEqualTo("https://generic.example");
-        await Assert.That(UnlistOptions.ResolveServerUrl(null, null, null))
-            .IsEqualTo(UnlistOptions.DefaultServerUrl);
-    }
-
-    [Test]
-    public async Task ResolveServerUrl_TreatsWhitespaceAsUnset()
-    {
-        await Assert.That(UnlistOptions.ResolveServerUrl("   ", "https://prefixed.example", null))
-            .IsEqualTo("https://prefixed.example");
-        await Assert.That(UnlistOptions.ResolveServerUrl("  ", " \t ", " "))
-            .IsEqualTo(UnlistOptions.DefaultServerUrl);
-    }
-
-    [Test]
-    public async Task ResolveApiKey_PrefersOptionThenPrefixedThenGenericThenUnset()
-    {
-        await Assert.That(UnlistOptions.ResolveApiKey("option-key", "prefixed-key", "generic-key"))
-            .IsEqualTo("option-key");
-        await Assert.That(UnlistOptions.ResolveApiKey(null, "prefixed-key", "generic-key"))
-            .IsEqualTo("prefixed-key");
-        await Assert.That(UnlistOptions.ResolveApiKey(null, null, "generic-key"))
-            .IsEqualTo("generic-key");
-        await Assert.That(UnlistOptions.ResolveApiKey(null, null, null)).IsNull();
-        await Assert.That(UnlistOptions.ResolveApiKey("", "", "")).IsNull();
-    }
-
-    [Test]
-    public async Task ResolveApiKey_CountsWhitespaceOnlyValuesAsSet()
-    {
-        // Actual behaviour: the API-key chain uses IsNullOrEmpty, not IsNullOrWhiteSpace, so a
-        // whitespace-only value short-circuits the chain instead of falling through.
-        await Assert.That(UnlistOptions.ResolveApiKey("   ", "prefixed-key", null)).IsEqualTo("   ");
-        await Assert.That(UnlistOptions.ResolveApiKey(null, "  ", "generic-key")).IsEqualTo("  ");
-    }
-
     [Test]
     public async Task Create_WhenEverythingUnset_AppliesTheDocumentedDefaults()
     {
@@ -85,7 +39,7 @@ public class DelistOptionsTests
         await Assert.That(options.PackageId).IsEqualTo(string.Empty);
         await Assert.That(options.Versions).IsEmpty();
         await Assert.That(options.ApiKey).IsNull();
-        await Assert.That(options.ServerUrl).IsEqualTo(UnlistOptions.DefaultServerUrl);
+        await Assert.That(options.ServerUrl).IsEqualTo(ConfigurationValueHelpers.DefaultServerUrl);
         await Assert.That(options.Backend).IsEqualTo(UnlistOptions.DefaultBackend);
         await Assert.That(options.OutputMode).IsEqualTo(UnlistOptions.DefaultOutputMode);
         await Assert.That(options.UseStrictParsing).IsFalse();

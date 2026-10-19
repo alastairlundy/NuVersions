@@ -20,6 +20,7 @@ using System.ComponentModel;
 using System.Text.Json;
 using NuGet.Protocol.Core.Types;
 using NuGet.Versioning;
+using NuVersionsCli.Helpers;
 
 namespace NuVersionsCli;
 
@@ -62,8 +63,9 @@ public class ShowCommand
         _packageVersionService = packageVersionService;
 
         // Prefetched as a plain value so the command body holds no environment-variable lookups;
-        // the precedence chain itself lives in UnlistOptions.ResolveServerUrl.
-        _serverUrlGeneric = Environment.GetEnvironmentVariable("NUGET_SERVER_URL");
+        // the precedence chain itself lives in ConfigurationValueHelpers.ResolveServerUrl.
+        _serverUrlGeneric = Environment.GetEnvironmentVariable(
+            ConfigurationValueHelpers.GenericServerUrlEnvironmentVariable);
     }
 
     [CliOption(Name = "--package-id", Required = true,
@@ -97,8 +99,8 @@ public class ShowCommand
             return ExitUsage;
         }
 
-        string serverUrl = UnlistOptions.ResolveServerUrl(ServerUrl,
-            _configuration["NuGetServerUrl"], _serverUrlGeneric);
+        string serverUrl = ConfigurationValueHelpers.ResolveServerUrl(ServerUrl,
+            _configuration[ConfigurationValueHelpers.ServerUrlConfigurationKey], _serverUrlGeneric);
 
         using CancellationTokenSource cancellationSource = new();
         ConsoleCancelEventHandler cancelHandler = (_, eventArgs) =>
