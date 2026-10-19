@@ -32,7 +32,7 @@ using NuVersionsLib.Models;
 namespace NuVersionsCli;
 
 /// <summary>
-/// The delisting command: the CLI's single presentation and failure boundary.
+/// The unlisting command: the CLI's single presentation and failure boundary.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -80,7 +80,7 @@ public class UnlistCommand
         _serviceProvider = serviceProvider;
 
         // Prefetched as plain values so the command body holds no environment-variable lookups; the
-        // precedence chain itself lives in DelistOptions.Create.
+        // precedence chain itself lives in UnlistOptions.Create.
         _apiKeyGeneric = Environment.GetEnvironmentVariable("NUGET_API_KEY");
         _serverUrlGeneric = Environment.GetEnvironmentVariable("NUGET_SERVER_URL");
     }
@@ -98,7 +98,7 @@ public class UnlistCommand
     public bool UseStrictParsing { get; set; } = true;
 
     /// <summary>
-    /// The pre-release versions to delist. Optional when <see cref="DelistAllVersions"/> is set.
+    /// The pre-release versions to unlist. Optional when <see cref="DelistAllVersions"/> is set.
     /// </summary>
     [CliArgument(Name = "versions", Required = false)]
     public string[] Versions { get; set; } = [];
@@ -115,19 +115,19 @@ public class UnlistCommand
     public string? ServerUrl { get; set; }
 
     /// <summary>
-    /// The backend to use for delisting: "http" (default) or "sdk".
+    /// The backend to use for unlisting: "http" (default) or "sdk".
     /// </summary>
     [CliOption(Name = "--backend", Required = false)]
     public string Backend { get; set; } = "http";
 
     /// <summary>
-    /// Includes stable Major==0 versions when using --delist-all-versions.
+    /// Includes stable Major==0 versions when using --delist-all.
     /// </summary>
     [CliOption(Name = "--include-zero-major", Required = false)]
     public bool IncludeZeroMajor { get; set; } = false;
 
     /// <summary>
-    /// Prints the delist plan without sending any delete request. No API key is required in
+    /// Prints the unlist plan without sending any unlist request. No API key is required in
     /// this mode, and it exits only with 0, 1, or 2.
     /// </summary>
     [CliOption(Name = "--dry-run", Required = false)]
@@ -190,11 +190,11 @@ public class UnlistCommand
         {
             // Resolving the keyed service here proves the composition-root wiring before any
             // work starts, for dry runs and real runs alike.
-            IPackageUnlistService delistService = GetUnlistService(options.Backend);
+            IPackageUnlistService unlistService = GetUnlistService(options.Backend);
 
             return options.DryRun
                 ? await RunDryRunAsync(options, cancellationSource.Token)
-                : await RunDelistAsync(options, delistService, cancellationSource.Token);
+                : await RunUnlistAsync(options, unlistService, cancellationSource.Token);
         }
         catch (ArgumentException exception)
         {
@@ -288,10 +288,10 @@ public class UnlistCommand
     }
 
     /// <summary>
-    /// Sends the delete requests through the composing service, renders every outcome, and returns the
+    /// Sends the unlist requests through the composing service, renders every outcome, and returns the
     /// merged exit code.
     /// </summary>
-    private async Task<int> RunDelistAsync(UnlistOptions options, IPackageUnlistService delistService,
+    private async Task<int> RunUnlistAsync(UnlistOptions options, IPackageUnlistService unlistService,
         CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrEmpty(options.ApiKey);
@@ -300,7 +300,7 @@ public class UnlistCommand
 
         if (options.DelistAllVersions)
         {
-            results = delistService.RequestPackageUnlistingAsync(options.ServerUrl, options.ApiKey,
+            results = unlistService.RequestPackageUnlistingAsync(options.ServerUrl, options.ApiKey,
                 options.PackageId, options.IncludeZeroMajor, cancellationToken);
         }
         else
@@ -308,7 +308,7 @@ public class UnlistCommand
             IList<NuGetVersion> requestedVersions =
                 ParseVersions([.. options.Versions], options.UseStrictParsing);
 
-            results = delistService.RequestPackageUnlistingAsync(options.ServerUrl, options.ApiKey,
+            results = unlistService.RequestPackageUnlistingAsync(options.ServerUrl, options.ApiKey,
                 options.PackageId, requestedVersions, cancellationToken);
         }
 
@@ -327,7 +327,7 @@ public class UnlistCommand
     }
 
     /// <summary>
-    /// Resolves and prints the delist plan without sending any delete request, then exits bucket-aware:
+    /// Resolves and prints the unlist plan without sending any unlist request, then exits bucket-aware:
     /// 0 only when every requested version exists on the server, 1 when any is absent, 2 when the
     /// package itself does not exist. Dry runs never emit 3 or 4.
     /// </summary>
@@ -430,8 +430,8 @@ public class UnlistCommand
             return;
         }
 
-        List<PackageVersionOutcome> unlisted = [.. outcomes.Where(IsDelistedOutcome)];
-        List<PackageVersionOutcome> notDelisted = [.. outcomes.Where(outcome => !IsDelistedOutcome(outcome))];
+        List<PackageVersionOutcome> unlisted = [.. outcomes.Where(IsUnlistedOutcome)];
+        List<PackageVersionOutcome> notUnlisted = [.. outcomes.Where(outcome => !IsUnlistedOutcome(outcome))];
 
         if (unlisted.Count > 0)
         {
@@ -443,19 +443,19 @@ public class UnlistCommand
             }
         }
 
-        if (notDelisted.Count > 0)
+        if (notUnlisted.Count > 0)
         {
             await Console.Out.WriteLineAsync(
                 $"The following versions of {options.PackageId} could not be unlisted:");
 
-            foreach (PackageVersionOutcome outcome in notDelisted)
+            foreach (PackageVersionOutcome outcome in notUnlisted)
             {
                 await Console.Out.WriteLineAsync(DescribeOutcome(outcome));
             }
         }
     }
 
-    private static bool IsDelistedOutcome(PackageVersionOutcome outcome) =>
+    private static bool IsUnlistedOutcome(PackageVersionOutcome outcome) =>
         outcome.Status is PackageVersionStatus.Unlisted or PackageVersionStatus.AlreadyUnlisted;
 
     /// <summary>
@@ -535,7 +535,7 @@ public class UnlistCommand
 
     /// <summary>
     /// The JSON rendering of a bucket uses only the closed status vocabulary: a version a dry run
-    /// would delist is a delete attempt that was never made.
+    /// would unlist is an unlist attempt that was never made.
     /// </summary>
     private static PackageVersionStatus ToBucketStatus(DryRunBucket bucket) => bucket switch
     {
