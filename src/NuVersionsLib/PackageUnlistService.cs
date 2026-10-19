@@ -70,12 +70,12 @@ public class PackageUnlistService : IPackageUnlistService
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         NuGetVersion[] versionsToDelist = await _packageVersionService.GetPrereleasePackageVersionsAsync
-            (nugetApiUrl, nugetApiKey, packageId, includeZeroMajorVersions, cancellationToken);
+            (nugetApiUrl, nugetApiKey, packageId, includeZeroMajorVersions, cancellationToken).ConfigureAwait(false);
 
         IAsyncEnumerable<PackageVersionOutcome> result = RequestPackageUnlistingAsync(nugetApiUrl,
             nugetApiKey, packageId, versionsToDelist, cancellationToken);
 
-        await foreach (PackageVersionOutcome outcome in result)
+        await foreach (PackageVersionOutcome outcome in result.ConfigureAwait(false))
         {
             yield return outcome;
         }
@@ -111,14 +111,14 @@ public class PackageUnlistService : IPackageUnlistService
         ArgumentException.ThrowIfNullOrEmpty(packageId);
         ArgumentNullException.ThrowIfNull(versions);
 
-        bool doesPackageExist = await _packageAvailabilityDetector.CheckPackageExistsAsync(nugetApiUrl, packageId, cancellationToken);
+        bool doesPackageExist = await _packageAvailabilityDetector.CheckPackageExistsAsync(nugetApiUrl, packageId, cancellationToken).ConfigureAwait(false);
 
         if(!doesPackageExist)
             throw new ArgumentException(string.Format(Resources.Exceptions_Package_NotFoundOnServer, packageId, nugetApiUrl), nameof(packageId));
 
         IDictionary<NuGetVersion, PackageVersionListingInfo> listingInfo =
             await _packageVersionService.CheckPackageVersionsListedAsync(nugetApiUrl, nugetApiKey, packageId,
-                true, versions, cancellationToken);
+                true, versions, cancellationToken).ConfigureAwait(false);
 
         DelistPlan plan = DelistPlanning.Partition(versions, listingInfo);
 
@@ -148,7 +148,7 @@ public class PackageUnlistService : IPackageUnlistService
             }
 
             PackageVersionOutcome outcome = await _versionDeleter.DeleteAsync(nugetApiUrl, packageId, version,
-                nugetApiKey, cancellationToken);
+                nugetApiKey, cancellationToken).ConfigureAwait(false);
 
             yield return outcome;
 

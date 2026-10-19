@@ -55,14 +55,14 @@ public class PackageVersionService : IPackageVersionService
 
         using SourceCacheContext cacheContext = new SourceCacheContext();
 
-        FindPackageByIdResource? resource = await repoInfo.GetResourceAsync<FindPackageByIdResource>(cancellationToken);
+        FindPackageByIdResource? resource = await repoInfo.GetResourceAsync<FindPackageByIdResource>(cancellationToken).ConfigureAwait(false);
 
         if (resource is null)
             throw new InvalidOperationException($"Package metadata resource is not available for this source: {nugetApiUrl}");
 
         IEnumerable<NuGetVersion>? allPackageVersions =
             await resource.GetAllVersionsAsync(packageId, cacheContext, NullLogger.Instance,
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
 
         if (allPackageVersions is null)
         {
@@ -97,14 +97,14 @@ public class PackageVersionService : IPackageVersionService
 
         using SourceCacheContext cacheContext = new SourceCacheContext();
 
-        FindPackageByIdResource? resource = await repoInfo.GetResourceAsync<FindPackageByIdResource>(cancellationToken);
+        FindPackageByIdResource? resource = await repoInfo.GetResourceAsync<FindPackageByIdResource>(cancellationToken).ConfigureAwait(false);
 
         if (resource is null)
             throw new InvalidOperationException($"Package metadata resource is not available for this source: {nugetApiUrl}");
 
         IEnumerable<NuGetVersion>? allPackageVersions =
             await resource.GetAllVersionsAsync(packageId, cacheContext, NullLogger.Instance,
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
 
         if (allPackageVersions is null)
             return [];
@@ -129,12 +129,12 @@ public class PackageVersionService : IPackageVersionService
         ArgumentException.ThrowIfNullOrEmpty(nugetApiKey);
         ArgumentException.ThrowIfNullOrEmpty(packageId);
 
-        bool packageExists = await _packageAvailabilityDetector.CheckPackageExistsAsync(nugetApiUrl, packageId, cancellationToken);
+        bool packageExists = await _packageAvailabilityDetector.CheckPackageExistsAsync(nugetApiUrl, packageId, cancellationToken).ConfigureAwait(false);
 
         if (!packageExists)
             throw new ArgumentException($"Package with Id of '{packageId}' does not exist.");
 
-        List<(NuGetVersion Version, bool IsListed)> metadata = await FetchPackageMetadataAsync(nugetApiUrl, nugetApiKey, packageId, includePreReleaseVersions: true, cancellationToken);
+        List<(NuGetVersion Version, bool IsListed)> metadata = await FetchPackageMetadataAsync(nugetApiUrl, nugetApiKey, packageId, includePreReleaseVersions: true, cancellationToken).ConfigureAwait(false);
 
         foreach ((NuGetVersion version, bool isListed) in metadata)
         {
@@ -162,12 +162,12 @@ public class PackageVersionService : IPackageVersionService
         ArgumentException.ThrowIfNullOrEmpty(nugetApiKey);
         ArgumentException.ThrowIfNullOrEmpty(packageId);
 
-        bool packageExists = await _packageAvailabilityDetector.CheckPackageExistsAsync(nugetApiUrl, packageId, cancellationToken);
+        bool packageExists = await _packageAvailabilityDetector.CheckPackageExistsAsync(nugetApiUrl, packageId, cancellationToken).ConfigureAwait(false);
 
         if (!packageExists)
             throw new ArgumentException($"Package with Id of '{packageId}' does not exist.");
 
-        List<(NuGetVersion Version, bool IsListed)> metadata = await FetchPackageMetadataAsync(nugetApiUrl, nugetApiKey, packageId, includePreReleaseVersions: true, cancellationToken);
+        List<(NuGetVersion Version, bool IsListed)> metadata = await FetchPackageMetadataAsync(nugetApiUrl, nugetApiKey, packageId, includePreReleaseVersions: true, cancellationToken).ConfigureAwait(false);
 
         return metadata.Select(m => m.Version).ToArray();
     }
@@ -195,14 +195,14 @@ public class PackageVersionService : IPackageVersionService
         using SourceCacheContext cacheContext = new SourceCacheContext();
 
         PackageMetadataResource? metadataResource =
-            await repoInfo.GetResourceAsync<PackageMetadataResource>(cancellationToken);
+            await repoInfo.GetResourceAsync<PackageMetadataResource>(cancellationToken).ConfigureAwait(false);
 
         if (metadataResource is null)
             throw new InvalidOperationException($"Package metadata resource is not available for this source: {nugetApiUrl}");
 
         PackageIdentity identity = new(packageId, packageVersion);
 
-        IPackageSearchMetadata? result = await metadataResource.GetMetadataAsync(identity, cacheContext, NullLogger.Instance, cancellationToken);
+        IPackageSearchMetadata? result = await metadataResource.GetMetadataAsync(identity, cacheContext, NullLogger.Instance, cancellationToken).ConfigureAwait(false);
 
         if (result is null)
             return false;
@@ -236,7 +236,7 @@ public class PackageVersionService : IPackageVersionService
         ArgumentNullException.ThrowIfNull(packageVersions);
 
         List<(NuGetVersion Version, bool IsListed)> metadata =
-            await FetchPackageMetadataAsync(nugetApiUrl, nugetApiKey, packageId, includePreReleaseVersions, cancellationToken);
+            await FetchPackageMetadataAsync(nugetApiUrl, nugetApiKey, packageId, includePreReleaseVersions, cancellationToken).ConfigureAwait(false);
 
         Dictionary<NuGetVersion, PackageVersionListingInfo> metadataLookup = metadata
             .Select(m => new PackageVersionListingInfo
@@ -277,14 +277,14 @@ public class PackageVersionService : IPackageVersionService
         using SourceCacheContext cacheContext = new SourceCacheContext();
 
         PackageMetadataResource? metadataResource =
-            await repoInfo.GetResourceAsync<PackageMetadataResource>(cancellationToken);
+            await repoInfo.GetResourceAsync<PackageMetadataResource>(cancellationToken).ConfigureAwait(false);
 
         if (metadataResource is null)
             throw new InvalidOperationException($"Package metadata resource is not available for this source: {nugetApiUrl}");
 
         IEnumerable<IPackageSearchMetadata> results =
             await metadataResource.GetMetadataAsync(packageId, includePrerelease: includePreReleaseVersions, includeUnlisted: true,
-                cacheContext, NullLogger.Instance, cancellationToken);
+                cacheContext, NullLogger.Instance, cancellationToken).ConfigureAwait(false);
 
         List<(NuGetVersion Version, bool IsListed)> metadata =
         [
