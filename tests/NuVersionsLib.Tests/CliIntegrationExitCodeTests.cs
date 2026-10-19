@@ -332,6 +332,7 @@ public class CliIntegrationExitCodeTests
     {
         ServiceCollection services = new();
         services.AddSingleton<IPackageAvailabilityDetector, PackageAvailabilityDetector>();
+        services.AddSingleton<IPackageVersionService, InterruptedVersionService>();
         services.AddKeyedSingleton<IPackageUnlistService>("http", static (provider, _) =>
             new PackageUnlistService(
                 new InterruptedVersionService(),
