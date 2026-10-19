@@ -30,7 +30,7 @@ A CLI to show how a NuGet package's versions are listed on a NuGet server, and t
 
 NuVersions ships through two distribution channels.
 
-### Channel 1 — the `dotnet tool` package (primary)
+### `dotnet tool` package (Primary)
 
 The primary distribution is the `dotnet tool` package on NuGet:
 
@@ -46,7 +46,7 @@ After installing, the `nuversions` command will be available on your PATH.
 
 This channel runs both backends (`http` and `sdk`) and serves musl/Alpine users — no standalone `linux-musl-*` binary is published.
 
-### Channel 2 — standalone binaries (GitHub Releases)
+### Standalone binaries (GitHub Releases)
 
 Self-contained, single-file binaries are attached to each GitHub Release for exactly six RIDs:
 
