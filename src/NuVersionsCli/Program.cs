@@ -26,20 +26,20 @@ Cli.Ext.ConfigureServices(services =>
         .AddSingleton<IPackageAvailabilityDetector, PackageAvailabilityDetector>()
         .AddSingleton<IPackageVersionService, PackageVersionService>()
         // Per-version delete backends keyed to the exact vocabulary the --backend option accepts.
-        .AddKeyedSingleton<IPackageVersionDeleter, HttpPackageVersionDeleter>("http")
-        .AddKeyedSingleton<IPackageVersionDeleter, SdkPackageVersionDeleter>("sdk")
+        .AddKeyedSingleton<IPackageVersionUnlister, HttpPackageVersionDeleter>("http")
+        .AddKeyedSingleton<IPackageVersionUnlister, SdkPackageVersionDeleter>("sdk")
         // Each composing service receives its keyed backend; both in-box backends detect 429
         // themselves, so the fail-fast state machine lives inside the services.
         .AddKeyedSingleton<IPackageUnlistService>("http", static (serviceProvider, _) =>
             new PackageUnlistService(
                 serviceProvider.GetRequiredService<IPackageVersionService>(),
                 serviceProvider.GetRequiredService<IPackageAvailabilityDetector>(),
-                serviceProvider.GetRequiredKeyedService<IPackageVersionDeleter>("http")))
+                serviceProvider.GetRequiredKeyedService<IPackageVersionUnlister>("http")))
         .AddKeyedSingleton<IPackageUnlistService>("sdk", static (serviceProvider, _) =>
             new NetSdkPackageUnlistService(
                 serviceProvider.GetRequiredService<IPackageVersionService>(),
                 serviceProvider.GetRequiredService<IPackageAvailabilityDetector>(),
-                serviceProvider.GetRequiredKeyedService<IPackageVersionDeleter>("sdk")))
+                serviceProvider.GetRequiredKeyedService<IPackageVersionUnlister>("sdk")))
         .AddCliInvoke(ServiceLifetime.Singleton);
 
     ConfigurationBuilder configurationBuilder = new();

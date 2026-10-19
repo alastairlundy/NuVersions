@@ -25,7 +25,7 @@ namespace NuVersionsLib;
 /// Service for requesting package delisting from a NuGet server.
 /// </summary>
 /// <remarks>
-/// Per-version delete requests are dispatched through the injected <see cref="IPackageVersionDeleter"/>
+/// Per-version delete requests are dispatched through the injected <see cref="IPackageVersionUnlister"/>
 /// backend; this composing service owns only the per-run state: enumerating the request, bucketing it via
 /// <see cref="DelistPlanning.Partition"/>, merging bucket and backend outcomes into one outcome per
 /// requested version, and the fail-fast rate-limit rule.
@@ -34,7 +34,7 @@ public class PackageUnlistService : IPackageUnlistService
 {
     private readonly IPackageVersionService _packageVersionService;
     private readonly IPackageAvailabilityDetector _packageAvailabilityDetector;
-    private readonly IPackageVersionDeleter _versionDeleter;
+    private readonly IPackageVersionUnlister _versionDeleter;
 
     /// <summary>
     /// Creates a service that dispatches delete requests through <paramref name="versionDeleter"/>.
@@ -44,7 +44,7 @@ public class PackageUnlistService : IPackageUnlistService
     /// <param name="versionDeleter">The per-version delete backend to dispatch to-delist versions through.</param>
     public PackageUnlistService(IPackageVersionService packageVersionService,
         IPackageAvailabilityDetector packageAvailabilityDetector,
-        IPackageVersionDeleter versionDeleter)
+        IPackageVersionUnlister versionDeleter)
     {
         ArgumentNullException.ThrowIfNull(packageVersionService);
         ArgumentNullException.ThrowIfNull(packageAvailabilityDetector);

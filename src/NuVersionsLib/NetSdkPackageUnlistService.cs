@@ -31,7 +31,7 @@ namespace NuVersionsLib;
 /// Consider using the HTTP-based <see cref="PackageUnlistService"/> where possible for improved security.
 /// </para>
 /// <para>
-/// Per-version delete requests are dispatched through the injected <see cref="IPackageVersionDeleter"/>
+/// Per-version delete requests are dispatched through the injected <see cref="IPackageVersionUnlister"/>
 /// backend (<see cref="SdkPackageVersionDeleter"/>); this composing service owns only the per-run state:
 /// enumerating the request, bucketing it via <see cref="DelistPlanning.Partition"/>, merging bucket and
 /// backend outcomes into one outcome per requested version, and the fail-fast rate-limit rule.
@@ -41,7 +41,7 @@ public class NetSdkPackageUnlistService : IPackageUnlistService
 {
     private readonly IPackageVersionService _packageVersionService;
     private readonly IPackageAvailabilityDetector _packageAvailabilityDetector;
-    private readonly IPackageVersionDeleter _versionDeleter;
+    private readonly IPackageVersionUnlister _versionDeleter;
 
     /// <summary>
     /// Creates a service that dispatches delete requests through <paramref name="versionDeleter"/>.
@@ -51,7 +51,7 @@ public class NetSdkPackageUnlistService : IPackageUnlistService
     /// <param name="versionDeleter">The per-version delete backend to dispatch to-delist versions through.</param>
     public NetSdkPackageUnlistService(IPackageVersionService packageVersionService,
         IPackageAvailabilityDetector packageAvailabilityDetector,
-        IPackageVersionDeleter versionDeleter)
+        IPackageVersionUnlister versionDeleter)
     {
         ArgumentNullException.ThrowIfNull(packageVersionService);
         ArgumentNullException.ThrowIfNull(packageAvailabilityDetector);
@@ -77,12 +77,12 @@ public class NetSdkPackageUnlistService : IPackageUnlistService
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         NuGetVersion[] versionsToDelist = await _packageVersionService.GetPrereleasePackageVersionsAsync
-            (nugetApiUrl, nugetApiKey, packageId, includeZeroMajorVersions, cancellationToken);
+            (nugetApiUrl, nugetApiKey, packageId, includeZeroMajorVersions, cancellationToken).ConfigureAwait(false);
 
         IAsyncEnumerable<PackageVersionOutcome> delistResults =
             RequestPackageUnlistingAsync(nugetApiUrl, nugetApiKey, packageId, versionsToDelist, cancellationToken);
 
-        await foreach (PackageVersionOutcome outcome in delistResults)
+        await foreach (PackageVersionOutcome outcome in delistResults.ConfigureAwait(false))
         {
             yield return outcome;
         }
@@ -118,14 +118,14 @@ public class NetSdkPackageUnlistService : IPackageUnlistService
         ArgumentException.ThrowIfNullOrEmpty(packageId);
         ArgumentNullException.ThrowIfNull(versions);
 
-        bool doesPackageExists = await _packageAvailabilityDetector.CheckPackageExistsAsync(nugetApiUrl, packageId, cancellationToken);
+        bool doesPackageExists = await _packageAvailabilityDetector.CheckPackageExistsAsync(nugetApiUrl, packageId, cancellationToken).ConfigureAwait(false);
 
         if(!doesPackageExists)
             throw new ArgumentException(string.Format(Resources.Exceptions_Package_NotFoundOnServer, packageId, nugetApiUrl), nameof(packageId));
 
         IDictionary<NuGetVersion, PackageVersionListingInfo> listingInfo =
             await _packageVersionService.CheckPackageVersionsListedAsync(nugetApiUrl, nugetApiKey, packageId,
-                true, versions, cancellationToken);
+                true, versions, cancellationToken).ConfigureAwait(false);
 
         DelistPlan plan = DelistPlanning.Partition(versions, listingInfo);
 
@@ -153,7 +153,7 @@ public class NetSdkPackageUnlistService : IPackageUnlistService
             }
 
             PackageVersionOutcome outcome = await _versionDeleter.DeleteAsync(nugetApiUrl, packageId, version,
-                nugetApiKey, cancellationToken);
+                nugetApiKey, cancellationToken).ConfigureAwait(false);
 
             yield return outcome;
 

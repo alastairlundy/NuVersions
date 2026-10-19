@@ -129,18 +129,18 @@ internal static class CliIntegrationHarness
         services.AddHttpClient()
             .AddSingleton<IPackageAvailabilityDetector, PackageAvailabilityDetector>()
             .AddSingleton<IPackageVersionService, PackageVersionService>()
-            .AddKeyedSingleton<IPackageVersionDeleter, HttpPackageVersionDeleter>("http")
-            .AddKeyedSingleton<IPackageVersionDeleter, SdkPackageVersionDeleter>("sdk")
+            .AddKeyedSingleton<IPackageVersionUnlister, HttpPackageVersionDeleter>("http")
+            .AddKeyedSingleton<IPackageVersionUnlister, SdkPackageVersionDeleter>("sdk")
             .AddKeyedSingleton<IPackageUnlistService>("http", static (serviceProvider, _) =>
                 new PackageUnlistService(
                     serviceProvider.GetRequiredService<IPackageVersionService>(),
                     serviceProvider.GetRequiredService<IPackageAvailabilityDetector>(),
-                    serviceProvider.GetRequiredKeyedService<IPackageVersionDeleter>("http")))
+                    serviceProvider.GetRequiredKeyedService<IPackageVersionUnlister>("http")))
             .AddKeyedSingleton<IPackageUnlistService>("sdk", static (serviceProvider, _) =>
                 new NetSdkPackageUnlistService(
                     serviceProvider.GetRequiredService<IPackageVersionService>(),
                     serviceProvider.GetRequiredService<IPackageAvailabilityDetector>(),
-                    serviceProvider.GetRequiredKeyedService<IPackageVersionDeleter>("sdk")))
+                    serviceProvider.GetRequiredKeyedService<IPackageVersionUnlister>("sdk")))
             .AddCliInvoke(ServiceLifetime.Singleton);
 
         ConfigurationBuilder configurationBuilder = new();

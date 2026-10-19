@@ -192,7 +192,7 @@ public class PackageDelistServiceTests
 
     private static PackageUnlistService CreateService(
         IDictionary<NuGetVersion, PackageVersionListingInfo> listingInfo, bool packageExists,
-        IPackageVersionDeleter deleter)
+        IPackageVersionUnlister deleter)
         => new(new ScriptedVersionService(listingInfo),
             new FixedAvailabilityDetector(packageExists), deleter);
 
@@ -215,7 +215,7 @@ public class PackageDelistServiceTests
 /// Delete backend double returning scripted statuses in order and counting every dispatch; with an
 /// empty script it throws, which doubles as proof that no dispatch happened at all.
 /// </summary>
-internal sealed class ScriptedDeleter : IPackageVersionDeleter
+internal sealed class ScriptedDeleter : IPackageVersionUnlister
 {
     private readonly Queue<PackageVersionStatus> _statuses = new();
 

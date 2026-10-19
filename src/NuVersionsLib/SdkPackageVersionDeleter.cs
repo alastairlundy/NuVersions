@@ -43,7 +43,7 @@ namespace NuVersionsLib;
 /// confidently distinguished are classified as <see cref="PackageVersionStatus.Failed"/>.
 /// </para>
 /// </remarks>
-public sealed class SdkPackageVersionDeleter : IPackageVersionDeleter
+public sealed partial class SdkPackageVersionDeleter : IPackageVersionUnlister
 {
     private readonly IProcessInvoker _processInvoker;
 
@@ -90,8 +90,8 @@ public sealed class SdkPackageVersionDeleter : IPackageVersionDeleter
                 version.ToNormalizedString(),
                 "--api-key", apiKey,
                 "--source", nugetApiUrl,
-                "--non-interactive"
-            ]
+                "--non-interactive",
+            ],
         };
 
         try
@@ -120,7 +120,7 @@ public sealed class SdkPackageVersionDeleter : IPackageVersionDeleter
             return new PackageVersionOutcome(packageId, version, PackageVersionStatus.Failed);
         }
         catch (Exception exception) when (exception is not OperationCanceledException
-            || !cancellationToken.IsCancellationRequested)
+                                          || !cancellationToken.IsCancellationRequested)
         {
             // A cancellation of the caller's token is deliberately not converted: it escapes so the
             // composing service and the command boundary can report the run as interrupted instead
@@ -134,24 +134,27 @@ public sealed class SdkPackageVersionDeleter : IPackageVersionDeleter
         // "429" must stand alone: an unexpected error that merely echoes a version number such as
         // "2.429.0" must not be misreported as a rate limit. Dots are excluded so version numerals
         // and decimal times never match.
-        if (Regex.IsMatch(output, "(?<![0-9.])429(?![0-9.])"))
+        if (MyRegex.IsMatch(output))
         {
             return true;
         }
 
         return output.Contains("too many requests", StringComparison.OrdinalIgnoreCase)
-            || output.Contains("rate limit", StringComparison.OrdinalIgnoreCase)
-            || output.Contains("rate-limit", StringComparison.OrdinalIgnoreCase)
-            || output.Contains("ratelimit", StringComparison.OrdinalIgnoreCase)
-            || output.Contains("retry later", StringComparison.OrdinalIgnoreCase)
-            || output.Contains("throttl", StringComparison.OrdinalIgnoreCase);
+               || output.Contains("rate limit", StringComparison.OrdinalIgnoreCase)
+               || output.Contains("rate-limit", StringComparison.OrdinalIgnoreCase)
+               || output.Contains("ratelimit", StringComparison.OrdinalIgnoreCase)
+               || output.Contains("retry later", StringComparison.OrdinalIgnoreCase)
+               || output.Contains("throttl", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool LooksAlreadyDelisted(string output)
     {
         return output.Contains("not listed", StringComparison.OrdinalIgnoreCase)
-            || output.Contains("already unlisted", StringComparison.OrdinalIgnoreCase)
-            || output.Contains("already unlisted", StringComparison.OrdinalIgnoreCase)
-            || output.Contains("is not listed", StringComparison.OrdinalIgnoreCase);
+               || output.Contains("already unlisted", StringComparison.OrdinalIgnoreCase)
+               || output.Contains("already unlisted", StringComparison.OrdinalIgnoreCase)
+               || output.Contains("is not listed", StringComparison.OrdinalIgnoreCase);
     }
+
+    [GeneratedRegex("(?<![0-9.])429(?![0-9.])", RegexOptions.IgnoreCase, 3000)]
+    private static partial Regex MyRegex { get; }
 }

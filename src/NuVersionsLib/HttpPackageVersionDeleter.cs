@@ -35,7 +35,7 @@ namespace NuVersionsLib;
 /// interpreted and stays a <see cref="PackageVersionStatus.Failed"/> outcome.
 /// </para>
 /// </remarks>
-public sealed class HttpPackageVersionDeleter : IPackageVersionDeleter
+public sealed class HttpPackageVersionDeleter : IPackageVersionUnlister
 {
     private const string NugetApiKeyHeaderName = "X-NuGet-ApiKey";
 

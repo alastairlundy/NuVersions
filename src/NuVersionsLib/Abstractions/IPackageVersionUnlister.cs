@@ -27,7 +27,7 @@ namespace NuVersionsLib.Abstractions;
 /// service-index resolution stays inside implementing backends, and per-run state belongs to the
 /// composing service rather than to this contract.
 /// </remarks>
-public interface IPackageVersionDeleter
+public interface IPackageVersionUnlister
 {
     /// <summary>
     /// Deletes a single package version from the specified NuGet server.
