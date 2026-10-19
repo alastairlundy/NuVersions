@@ -22,65 +22,15 @@ using System.Text;
 
 namespace NuVersionsLib.Tests;
 
-/// <summary>One request as observed by <see cref="ScriptedHttpMessageHandler"/>.</summary>
-internal sealed record DispatchedRequest(string Method, string RequestUri);
-
-/// <summary>
-/// An <see cref="HttpMessageHandler"/> replaying a scripted queue of status codes (or thrown
-/// exceptions) and recording every request the production code dispatches through it, so tests can
-/// prove both which status was translated and how many requests were actually sent.
-/// </summary>
-internal sealed class ScriptedHttpMessageHandler : HttpMessageHandler
-{
-    private readonly Queue<object> _script = new();
-
-    public List<DispatchedRequest> DispatchedRequests { get; } = [];
-
-    public int DispatchCount => DispatchedRequests.Count;
-
-    public void EnqueueStatusCode(HttpStatusCode statusCode) => _script.Enqueue(statusCode);
-
-    public void EnqueueException(Exception exception) => _script.Enqueue(exception);
-
-    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,
-        CancellationToken cancellationToken)
-    {
-        DispatchedRequests.Add(new DispatchedRequest(request.Method.Method,
-            request.RequestUri?.ToString() ?? string.Empty));
-
-        if (_script.Count == 0)
-        {
-            throw new InvalidOperationException(
-                $"No scripted response for {request.Method} {request.RequestUri}.");
-        }
-
-        object next = _script.Dequeue();
-
-        if (next is Exception exception)
-        {
-            throw exception;
-        }
-
-        return Task.FromResult(new HttpResponseMessage((HttpStatusCode)next));
-    }
-}
-
-/// <summary>
-/// An <see cref="IHttpClientFactory"/> handing out fresh clients over the shared stubbed handler.
-/// </summary>
-internal sealed class StubHttpClientFactory(HttpMessageHandler handler) : IHttpClientFactory
-{
-    public HttpClient CreateClient(string name) => new HttpClient(handler, disposeHandler: false);
-}
-
 /// <summary>
 /// A loopback-only HTTP server that serves the NuGet v3 service index.
 /// </summary>
 /// <remarks>
-/// <see cref="HttpPackageVersionDeleter"/> resolves the service index through NuGet.Protocol's own
-/// internal HTTP stack — not through the injected client factory — so handler-stub tests need a
+/// <see cref="PackageUnlistService"/> resolves the service index through NuGet.Protocol's own
+/// internal HTTP stack — not through the injected client factory — so handler-stubbed tests need a
 /// real (but strictly local) listener for that one GET. Only loopback addresses are ever bound;
-/// no external network is touched.
+/// no external network is touched. The publish-endpoint responses that follow arrive through
+/// <see cref="FakeScriptedHttpTransportHandler"/>.
 /// </remarks>
 internal sealed class LoopbackServiceIndexServer : IDisposable
 {

@@ -324,8 +324,8 @@ public class CliIntegrationExitCodeTests
     /// test runner itself, so the interruption is simulated on the read path whose cancellation the
     /// command boundary maps to 130. Everything else the mapping depends on — argument-bound options,
     /// the composing service's availability check against the mock server, and the command's catch —
-    /// is the production code path. The scripted deleter doubles as a tripwire: any dispatch attempt
-    /// would throw and fail this test with the wrong exit code.
+    /// is the production code path. The unscripted transport double serves as a tripwire: any
+    /// dispatch attempt would throw inside the handler and fail this test with the wrong exit code.
     /// </remarks>
     private static async Task<CommandRun> RunInterruptedAsync(MockNuGetV3Server server,
         string packageId)
@@ -336,7 +336,7 @@ public class CliIntegrationExitCodeTests
             new PackageUnlistService(
                 new InterruptedVersionService(),
                 provider.GetRequiredService<IPackageAvailabilityDetector>(),
-                new ScriptedDeleter()));
+                new FakeHttpClientFactory(new FakeScriptedHttpTransportHandler())));
 
         await using ServiceProvider provider = services.BuildServiceProvider();
 

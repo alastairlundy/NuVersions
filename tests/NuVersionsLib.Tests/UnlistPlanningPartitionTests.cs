@@ -23,7 +23,7 @@ using NuVersionsLib.Models;
 namespace NuVersionsLib.Tests;
 
 /// <summary>
-/// Unit coverage for <see cref="DelistPlanning.Partition"/>: which bucket each requested version
+/// Unit coverage for <see cref="UnlistPlanning.Partition"/>: which bucket each requested version
 /// lands in, de-duplication, and the missing-key rule that keeps an unknown version out of the
 /// success buckets.
 /// </summary>
@@ -31,7 +31,7 @@ namespace NuVersionsLib.Tests;
 /// The missing-key rule is the important one: a version the server never reported must surface as
 /// not-on-server (a failure), never as already-unlisted (a success).
 /// </remarks>
-public class DelistPlanningPartitionTests
+public class UnlistPlanningPartitionTests
 {
     private static NuGetVersion V(string version) => NuGetVersion.Parse(version);
 
@@ -66,13 +66,13 @@ public class DelistPlanningPartitionTests
             // missingKeyVersion is deliberately absent from the lookup entirely.
         };
 
-        DelistPlan plan = DelistPlanning.Partition(
+        UnlistPlan plan = UnlistPlanning.Partition(
             [listedVersion, unlistedVersion, absentVersion, missingKeyVersion], listingInfo);
 
-        await Assert.That(plan.ToDelist.Count).IsEqualTo(1);
-        await Assert.That(plan.ToDelist[0]).IsEqualTo(listedVersion);
-        await Assert.That(plan.AlreadyDelisted.Count).IsEqualTo(1);
-        await Assert.That(plan.AlreadyDelisted[0]).IsEqualTo(unlistedVersion);
+        await Assert.That(plan.ToUnlist.Count).IsEqualTo(1);
+        await Assert.That(plan.ToUnlist[0]).IsEqualTo(listedVersion);
+        await Assert.That(plan.AlreadyUnlisted.Count).IsEqualTo(1);
+        await Assert.That(plan.AlreadyUnlisted[0]).IsEqualTo(unlistedVersion);
         await Assert.That(plan.NotOnServer.Count).IsEqualTo(2);
         await Assert.That(plan.NotOnServer[0]).IsEqualTo(absentVersion);
         await Assert.That(plan.NotOnServer[1]).IsEqualTo(missingKeyVersion);
@@ -88,30 +88,30 @@ public class DelistPlanningPartitionTests
             [version] = Listed()
         };
 
-        DelistPlan plan = DelistPlanning.Partition([version, version, version], listingInfo);
+        UnlistPlan plan = UnlistPlanning.Partition([version, version, version], listingInfo);
 
-        await Assert.That(plan.ToDelist.Count).IsEqualTo(1);
-        await Assert.That(plan.ToDelist[0]).IsEqualTo(version);
-        await Assert.That(plan.AlreadyDelisted).IsEmpty();
+        await Assert.That(plan.ToUnlist.Count).IsEqualTo(1);
+        await Assert.That(plan.ToUnlist[0]).IsEqualTo(version);
+        await Assert.That(plan.AlreadyUnlisted).IsEmpty();
         await Assert.That(plan.NotOnServer).IsEmpty();
     }
 
     [Test]
-    public async Task Partition_MissingLookupKeyIsNotOnServerRatherThanAlreadyDelisted()
+    public async Task Partition_MissingLookupKeyIsNotOnServerRatherThanAlreadyUnlisted()
     {
         NuGetVersion ghost = V("1.2.3");
 
-        DelistPlan plan = DelistPlanning.Partition([ghost],
+        UnlistPlan plan = UnlistPlanning.Partition([ghost],
             new Dictionary<NuGetVersion, PackageVersionListingInfo>());
 
         await Assert.That(plan.NotOnServer.Count).IsEqualTo(1);
         await Assert.That(plan.NotOnServer[0]).IsEqualTo(ghost);
-        await Assert.That(plan.AlreadyDelisted).IsEmpty();
-        await Assert.That(plan.ToDelist).IsEmpty();
+        await Assert.That(plan.AlreadyUnlisted).IsEmpty();
+        await Assert.That(plan.ToUnlist).IsEmpty();
     }
 
     [Test]
-    public async Task Partition_PresentButAbsentFromServerNeverReportsAlreadyDelisted()
+    public async Task Partition_PresentButAbsentFromServerNeverReportsAlreadyUnlisted()
     {
         NuGetVersion ghost = V("0.9.0-beta");
 
@@ -120,21 +120,21 @@ public class DelistPlanningPartitionTests
             [ghost] = Absent()
         };
 
-        DelistPlan plan = DelistPlanning.Partition([ghost], listingInfo);
+        UnlistPlan plan = UnlistPlanning.Partition([ghost], listingInfo);
 
         await Assert.That(plan.NotOnServer.Count).IsEqualTo(1);
-        await Assert.That(plan.AlreadyDelisted).IsEmpty();
-        await Assert.That(plan.ToDelist).IsEmpty();
+        await Assert.That(plan.AlreadyUnlisted).IsEmpty();
+        await Assert.That(plan.ToUnlist).IsEmpty();
     }
 
     [Test]
     public async Task Partition_EmptyRequestYieldsAnEmptyPlan()
     {
-        DelistPlan plan = DelistPlanning.Partition([],
+        UnlistPlan plan = UnlistPlanning.Partition([],
             new Dictionary<NuGetVersion, PackageVersionListingInfo>());
 
-        await Assert.That(plan.ToDelist).IsEmpty();
-        await Assert.That(plan.AlreadyDelisted).IsEmpty();
+        await Assert.That(plan.ToUnlist).IsEmpty();
+        await Assert.That(plan.AlreadyUnlisted).IsEmpty();
         await Assert.That(plan.NotOnServer).IsEmpty();
     }
 }

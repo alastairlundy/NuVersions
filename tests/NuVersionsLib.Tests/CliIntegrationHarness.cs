@@ -16,6 +16,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+using CliInvoke.Core;
 using CliInvoke.Extensions;
 using DotMake.CommandLine;
 using Microsoft.Extensions.Configuration;
@@ -120,27 +121,26 @@ internal static class CliIntegrationHarness
     }
 
     /// <summary>
-    /// The registration set from <c>Program.cs</c>: HTTP and SDK delete backends keyed to the exact
-    /// vocabulary the <c>--backend</c> option accepts, one composing service per key, and the
-    /// environment-prefixed configuration the options precedence chain reads.
+    /// The registration set from <c>Program.cs</c>: HTTP and SDK unlist backends keyed to the exact
+    /// vocabulary the <c>--backend</c> option accepts, one composing service per key bound to its own
+    /// transport collaborator, and the environment-prefixed configuration the options precedence chain
+    /// reads.
     /// </summary>
     private static void ConfigureProductionServices(IServiceCollection services)
     {
         services.AddHttpClient()
             .AddSingleton<IPackageAvailabilityDetector, PackageAvailabilityDetector>()
             .AddSingleton<IPackageVersionService, PackageVersionService>()
-            .AddKeyedSingleton<IPackageVersionUnlister, HttpPackageVersionDeleter>("http")
-            .AddKeyedSingleton<IPackageVersionUnlister, SdkPackageVersionDeleter>("sdk")
             .AddKeyedSingleton<IPackageUnlistService>("http", static (serviceProvider, _) =>
                 new PackageUnlistService(
                     serviceProvider.GetRequiredService<IPackageVersionService>(),
                     serviceProvider.GetRequiredService<IPackageAvailabilityDetector>(),
-                    serviceProvider.GetRequiredKeyedService<IPackageVersionUnlister>("http")))
+                    serviceProvider.GetRequiredService<IHttpClientFactory>()))
             .AddKeyedSingleton<IPackageUnlistService>("sdk", static (serviceProvider, _) =>
                 new NetSdkPackageUnlistService(
                     serviceProvider.GetRequiredService<IPackageVersionService>(),
                     serviceProvider.GetRequiredService<IPackageAvailabilityDetector>(),
-                    serviceProvider.GetRequiredKeyedService<IPackageVersionUnlister>("sdk")))
+                    serviceProvider.GetRequiredService<IProcessInvoker>()))
             .AddCliInvoke(ServiceLifetime.Singleton);
 
         ConfigurationBuilder configurationBuilder = new();
