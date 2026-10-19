@@ -22,45 +22,55 @@ using NuVersionsLib.Internal;
 namespace NuVersionsLib;
 
 /// <summary>
-/// Service for requesting package delisting from a NuGet server.
+/// Service for requesting package unlisting from a NuGet server over HTTP (the NuGet DELETE endpoint).
 /// </summary>
 /// <remarks>
-/// Per-version delete requests are dispatched through the injected <see cref="IPackageVersionUnlister"/>
-/// backend; this composing service owns only the per-run state: enumerating the request, bucketing it via
-/// <see cref="DelistPlanning.Partition"/>, merging bucket and backend outcomes into one outcome per
-/// requested version, and the fail-fast rate-limit rule.
+/// <para>
+/// Per-version unlist requests are dispatched through this class's own inlined HTTP flow; the publish URL
+/// is resolved per call via the service index, so a single instance may serve multiple sources. Every
+/// shared run rule (argument validation, package-existence check, listed-state check, partition, bucket
+/// yields, fail-fast rate-limit loop) lives once in <see cref="UnlistRun"/>.
+/// </para>
+/// <para>
+/// A 404 is only reported as <see cref="PackageVersionStatus.AlreadyUnlisted"/> when the server's
+/// service index advertised the <c>PackagePublish/2.0.0</c> endpoint the request actually went to.
+/// When that endpoint is absent and the request fell back to the raw server URL, a 404 cannot be
+/// interpreted and stays a <see cref="PackageVersionStatus.Failed"/> outcome.
+/// </para>
 /// </remarks>
 public class PackageUnlistService : IPackageUnlistService
 {
+    private const string NugetApiKeyHeaderName = "X-NuGet-ApiKey";
+
     private readonly IPackageVersionService _packageVersionService;
     private readonly IPackageAvailabilityDetector _packageAvailabilityDetector;
-    private readonly IPackageVersionUnlister _versionDeleter;
+    private readonly IHttpClientFactory _clientFactory;
 
     /// <summary>
-    /// Creates a service that dispatches delete requests through <paramref name="versionDeleter"/>.
+    /// Creates a service that sends unlist requests through the NuGet HTTP publish endpoint.
     /// </summary>
     /// <param name="packageVersionService">Service used to enumerate and check package versions.</param>
     /// <param name="packageAvailabilityDetector">Detector used to verify the package exists on the server.</param>
-    /// <param name="versionDeleter">The per-version delete backend to dispatch to-delist versions through.</param>
+    /// <param name="clientFactory">Factory used to create the <see cref="HttpClient"/> that sends each unlist request.</param>
     public PackageUnlistService(IPackageVersionService packageVersionService,
         IPackageAvailabilityDetector packageAvailabilityDetector,
-        IPackageVersionUnlister versionDeleter)
+        IHttpClientFactory clientFactory)
     {
         ArgumentNullException.ThrowIfNull(packageVersionService);
         ArgumentNullException.ThrowIfNull(packageAvailabilityDetector);
-        ArgumentNullException.ThrowIfNull(versionDeleter);
+        ArgumentNullException.ThrowIfNull(clientFactory);
 
         _packageVersionService = packageVersionService;
         _packageAvailabilityDetector = packageAvailabilityDetector;
-        _versionDeleter = versionDeleter;
+        _clientFactory = clientFactory;
     }
 
     /// <summary>
-    /// Requests the delisting of all prerelease versions of a NuGet package.
+    /// Requests the unlisting of all prerelease versions of a NuGet package.
     /// </summary>
     /// <param name="nugetApiUrl">The URL of the NuGet API.</param>
     /// <param name="nugetApiKey">The API key for authenticating with the NuGet service.</param>
-    /// <param name="packageId">The identifier of the NuGet package to delist versions for.</param>
+    /// <param name="packageId">The identifier of the NuGet package to unlist versions for.</param>
     /// <param name="includeZeroMajorVersions">When true, stable versions with Major == 0 are also unlisted alongside prerelease versions.</param>
     /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
     /// <returns>An asynchronous sequence containing one <see cref="PackageVersionOutcome"/> per requested version.</returns>
@@ -69,36 +79,33 @@ public class PackageUnlistService : IPackageUnlistService
         bool includeZeroMajorVersions = false,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        NuGetVersion[] versionsToDelist = await _packageVersionService.GetPrereleasePackageVersionsAsync
-            (nugetApiUrl, nugetApiKey, packageId, includeZeroMajorVersions, cancellationToken).ConfigureAwait(false);
+        IAsyncEnumerable<PackageVersionOutcome> results = UnlistRun.ExecuteAsync(nugetApiUrl, nugetApiKey,
+            packageId, includeZeroMajorVersions, UnlistVersionAsync, _packageVersionService,
+            _packageAvailabilityDetector, cancellationToken);
 
-        IAsyncEnumerable<PackageVersionOutcome> result = RequestPackageUnlistingAsync(nugetApiUrl,
-            nugetApiKey, packageId, versionsToDelist, cancellationToken);
-
-        await foreach (PackageVersionOutcome outcome in result.ConfigureAwait(false))
+        await foreach (PackageVersionOutcome outcome in results.ConfigureAwait(false))
         {
             yield return outcome;
         }
     }
 
     /// <summary>
-    /// Asynchronously requests the delisting of specified NuGet package versions from a package registry.
+    /// Asynchronously requests the unlisting of specified NuGet package versions from a package registry.
     /// </summary>
     /// <param name="nugetApiUrl">The URL of the NuGet API.</param>
     /// <param name="nugetApiKey">The API key for authenticating with the NuGet service.</param>
-    /// <param name="packageId">The identifier of the NuGet package to delist versions for.</param>
-    /// <param name="versions">The versions of the package to delist.</param>
+    /// <param name="packageId">The identifier of the NuGet package to unlist versions for.</param>
+    /// <param name="versions">The versions of the package to unlist.</param>
     /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
     /// <returns>An asynchronous sequence containing one <see cref="PackageVersionOutcome"/> per requested version.</returns>
     /// <remarks>
     /// <para>
     /// Already-unlisted and not-on-server versions are reported from the plan's buckets; only
-    /// <c>plan.ToDelist</c> versions are dispatched to the injected deleter, so every requested version
-    /// yields exactly one outcome.
+    /// <c>plan.ToUnlist</c> versions are dispatched, so every requested version yields exactly one outcome.
     /// </para>
     /// <para>
     /// Fail-fast: when a dispatch reports <see cref="PackageVersionStatus.RateLimited"/>, no further
-    /// dispatches are made and every remaining to-delist version is reported as
+    /// dispatches are made and every remaining to-unlist version is reported as
     /// <see cref="PackageVersionStatus.NotAttempted"/> rather than <see cref="PackageVersionStatus.Failed"/>.
     /// </para>
     /// </remarks>
@@ -106,54 +113,82 @@ public class PackageUnlistService : IPackageUnlistService
         string nugetApiKey, string packageId,
         IList<NuGetVersion> versions, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        ArgumentException.ThrowIfNullOrEmpty(nugetApiUrl);
-        ArgumentException.ThrowIfNullOrEmpty(nugetApiKey);
-        ArgumentException.ThrowIfNullOrEmpty(packageId);
-        ArgumentNullException.ThrowIfNull(versions);
+        IAsyncEnumerable<PackageVersionOutcome> results = UnlistRun.ExecuteAsync(nugetApiUrl, nugetApiKey,
+            packageId, versions, UnlistVersionAsync, _packageVersionService, _packageAvailabilityDetector,
+            cancellationToken);
 
-        bool doesPackageExist = await _packageAvailabilityDetector.CheckPackageExistsAsync(nugetApiUrl, packageId, cancellationToken).ConfigureAwait(false);
-
-        if(!doesPackageExist)
-            throw new ArgumentException(string.Format(Resources.Exceptions_Package_NotFoundOnServer, packageId, nugetApiUrl), nameof(packageId));
-
-        IDictionary<NuGetVersion, PackageVersionListingInfo> listingInfo =
-            await _packageVersionService.CheckPackageVersionsListedAsync(nugetApiUrl, nugetApiKey, packageId,
-                true, versions, cancellationToken).ConfigureAwait(false);
-
-        DelistPlan plan = DelistPlanning.Partition(versions, listingInfo);
-
-        foreach (NuGetVersion alreadyDelistedVersion in plan.AlreadyDelisted)
+        await foreach (PackageVersionOutcome outcome in results.ConfigureAwait(false))
         {
-            yield return new PackageVersionOutcome(packageId, alreadyDelistedVersion,
-                PackageVersionStatus.AlreadyUnlisted);
+            yield return outcome;
         }
+    }
 
-        foreach (NuGetVersion missingVersion in plan.NotOnServer)
+    /// <summary>
+    /// Unlists a single package version via the NuGet HTTP DELETE endpoint.
+    /// </summary>
+    /// <param name="nugetApiUrl">The URL of the NuGet API endpoint serving the package.</param>
+    /// <param name="packageId">The identifier of the package the version belongs to.</param>
+    /// <param name="version">The specific version of the package to unlist.</param>
+    /// <param name="apiKey">The API key required for authentication with the NuGet service.</param>
+    /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
+    /// <returns>The closed outcome of the unlist attempt for this version.</returns>
+    private async ValueTask<PackageVersionOutcome> UnlistVersionAsync(
+        string nugetApiUrl, string packageId, NuGetVersion version,
+        string apiKey, CancellationToken cancellationToken)
+    {
+        UnlistRun.ValidateUnlistArguments(nugetApiUrl, packageId, version, apiKey);
+
+        try
         {
-            yield return new PackageVersionOutcome(packageId, missingVersion,
-                PackageVersionStatus.NotOnServer);
-        }
+            SourceRepository repoInfo = Repository.Factory.GetCoreV3(nugetApiUrl);
 
-        if (plan.ToDelist.Count == 0)
-            yield break;
+            ServiceIndexResourceV3? serviceIndex =
+                await repoInfo.GetResourceAsync<ServiceIndexResourceV3>(cancellationToken)
+                    .ConfigureAwait(false);
 
-        bool rateLimitStop = false;
+            Uri? publishUrl = serviceIndex?.GetServiceEntryUri("PackagePublish/2.0.0");
 
-        foreach (NuGetVersion version in plan.ToDelist)
-        {
-            if (rateLimitStop)
+            // A 404 only means "already unlisted" when the request actually went to the server's
+            // declared publish endpoint. When the service index did not advertise one and the run
+            // fell back to the raw server URL, a 404 says nothing about the version's state, so the
+            // request stays a plain failure instead of a false success.
+            bool resolvedPublishUrl = publishUrl is not null;
+
+            publishUrl ??= new Uri(nugetApiUrl);
+
+            HttpClient client = _clientFactory.CreateClient();
+
+            client.DefaultRequestHeaders.Add(NugetApiKeyHeaderName, [apiKey]);
+            client.BaseAddress = new Uri(publishUrl.AbsoluteUri.TrimEnd('/') + "/");
+            client.Timeout = TimeSpan.FromMinutes(2);
+
+            string relativeUrl = $"{packageId}/{version.ToNormalizedString()}";
+
+            using HttpResponseMessage response =
+                await client.DeleteAsync(relativeUrl, cancellationToken).ConfigureAwait(false);
+
+            if (response.IsSuccessStatusCode)
             {
-                yield return new PackageVersionOutcome(packageId, version, PackageVersionStatus.NotAttempted);
-                continue;
+                return new PackageVersionOutcome(packageId, version, PackageVersionStatus.Unlisted);
             }
 
-            PackageVersionOutcome outcome = await _versionDeleter.DeleteAsync(nugetApiUrl, packageId, version,
-                nugetApiKey, cancellationToken).ConfigureAwait(false);
+            if ((int)response.StatusCode == 404 && resolvedPublishUrl)
+            {
+                return new PackageVersionOutcome(packageId, version, PackageVersionStatus.AlreadyUnlisted);
+            }
 
-            yield return outcome;
+            if ((int)response.StatusCode == 429)
+            {
+                return new PackageVersionOutcome(packageId, version, PackageVersionStatus.RateLimited);
+            }
 
-            if (outcome.Status == PackageVersionStatus.RateLimited)
-                rateLimitStop = true;
+            return new PackageVersionOutcome(packageId, version, PackageVersionStatus.Failed);
+        }
+        catch (Exception exception) when (UnlistRun.ConvertsToFailed(exception, cancellationToken))
+        {
+            // Server-side faults become a Failed outcome; the caller-cancellation rule lives in
+            // UnlistRun.ConvertsToFailed.
+            return new PackageVersionOutcome(packageId, version, PackageVersionStatus.Failed);
         }
     }
 }

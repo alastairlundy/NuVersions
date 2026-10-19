@@ -21,18 +21,18 @@ namespace NuVersionsLib.Internal;
 /// <summary>
 /// The requested versions of a package, bucketed by the listing state they were found in on the server.
 /// </summary>
-/// <param name="ToDelist">Versions that exist, are listed, and therefore need a delete request.</param>
-/// <param name="AlreadyDelisted">Versions that exist on the server but are already unlisted.</param>
+/// <param name="ToUnlist">Versions that exist, are listed, and therefore need an unlist request.</param>
+/// <param name="AlreadyUnlisted">Versions that exist on the server but are already unlisted.</param>
 /// <param name="NotOnServer">Versions the server does not know about at all.</param>
-internal sealed record DelistPlan(
-    IReadOnlyList<NuGetVersion> ToDelist,
-    IReadOnlyList<NuGetVersion> AlreadyDelisted,
+internal sealed record UnlistPlan(
+    IReadOnlyList<NuGetVersion> ToUnlist,
+    IReadOnlyList<NuGetVersion> AlreadyUnlisted,
     IReadOnlyList<NuGetVersion> NotOnServer);
 
 /// <summary>
-/// Turns requested package versions plus the server's listing metadata into a <see cref="DelistPlan"/>.
+/// Turns requested package versions plus the server's listing metadata into a <see cref="UnlistPlan"/>.
 /// </summary>
-internal static class DelistPlanning
+internal static class UnlistPlanning
 {
     /// <summary>
     /// Partitions the requested versions by their current listing state.
@@ -42,17 +42,17 @@ internal static class DelistPlanning
     /// reported separately so that a mistyped or never-published version surfaces as a failure instead of a
     /// misleading success.
     /// </remarks>
-    /// <param name="requestedVersions">The versions the caller asked to delist. May contain duplicates.</param>
+    /// <param name="requestedVersions">The versions the caller asked to unlist. May contain duplicates.</param>
     /// <param name="listingInfoByVersion">Listing metadata keyed by version, as returned by
     /// <see cref="Abstractions.IPackageVersionService.CheckPackageVersionsListedAsync"/>.</param>
-    internal static DelistPlan Partition(IEnumerable<NuGetVersion> requestedVersions,
+    internal static UnlistPlan Partition(IEnumerable<NuGetVersion> requestedVersions,
         IDictionary<NuGetVersion, PackageVersionListingInfo> listingInfoByVersion)
     {
         ArgumentNullException.ThrowIfNull(requestedVersions);
         ArgumentNullException.ThrowIfNull(listingInfoByVersion);
 
-        List<NuGetVersion> toDelist = [];
-        List<NuGetVersion> alreadyDelisted = [];
+        List<NuGetVersion> toUnlist = [];
+        List<NuGetVersion> alreadyUnlisted = [];
         List<NuGetVersion> notOnServer = [];
 
         foreach (NuGetVersion version in requestedVersions.Distinct())
@@ -64,14 +64,14 @@ internal static class DelistPlanning
             }
             else if (!listingInfo.IsListed)
             {
-                alreadyDelisted.Add(version);
+                alreadyUnlisted.Add(version);
             }
             else
             {
-                toDelist.Add(version);
+                toUnlist.Add(version);
             }
         }
 
-        return new DelistPlan(toDelist, alreadyDelisted, notOnServer);
+        return new UnlistPlan(toUnlist, alreadyUnlisted, notOnServer);
     }
 }
