@@ -17,9 +17,7 @@
  */
 
 using System.ComponentModel;
-using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
-using NuGet.Protocol.Core.Types;
 using NuGet.Versioning;
 using NuVersionsCli.Helpers;
 using NuVersionsLib.Detectors.Abstractions;
@@ -133,47 +131,22 @@ public class UnlistCommand
 
     public async Task<int> RunAsync()
     {
-        // The argument tokeniser turns an unknown option such as --typo into a plain argument token
-        // (only a missing required option or a missing option value reaches it as an error), and the
-        // greedy versions position absorbs it. Reject option-looking tokens here so a typo fails the run as the usage error
-        // it is, instead of vanishing.
-        string[] unknownOptions =
-        [
-            .. Versions
-                .Where(static version => version.StartsWith('-')),
-        ];
-
-        if (unknownOptions.Length > 0)
-        {
-            foreach (string unknownOption in unknownOptions)
-            {
-                await Console.Error.WriteLineAsync($"Error: Unrecognized option: '{unknownOption}'.").ConfigureAwait(true);
-            }
-
-            return ExitCodeHelpers.ExitUsage;
-        }
-
         UnlistOptions options = ResolveOptions();
 
-        IReadOnlyList<UnlistOptionsValidationFailure> failures = options.Validate();
+        IReadOnlyList<OptionsValidationFailure> failures = options.Validate();
 
         if (failures.Count > 0)
         {
-            foreach (UnlistOptionsValidationFailure failure in failures)
+            foreach (OptionsValidationFailure failure in failures)
             {
-                await Console.Error.WriteLineAsync(DescribeValidationFailure(failure)).ConfigureAwait(true);
+                await Console.Error.WriteLineAsync(ValidationFailureHelpers.Describe(failure)).ConfigureAwait(true);
             }
 
             return ExitCodeHelpers.ExitUsage;
         }
 
         using CancellationTokenSource cancellationSource = new();
-        ConsoleCancelEventHandler cancelHandler = (_, eventArgs) =>
-        {
-            eventArgs.Cancel = true;
-            cancellationSource.Cancel();
-        };
-        Console.CancelKeyPress += cancelHandler;
+        using IDisposable ctrlC = CtrlCHelpers.Register(cancellationSource);
 
         try
         {
@@ -185,74 +158,36 @@ public class UnlistCommand
                 ? await RunDryRunAsync(options, cancellationSource.Token).ConfigureAwait(true)
                 : await RunUnlistAsync(options, unlistService, cancellationSource.Token).ConfigureAwait(true);
         }
-        catch (ArgumentException exception)
-        {
-            // Package-not-found-on-server (thrown by the composing services) and invalid version
-            // strings under strict parsing both surface as ArgumentException → usage.
-            await Console.Error.WriteLineAsync(exception.Message).ConfigureAwait(true);
-            return ExitCodeHelpers.ExitUsage;
-        }
-        catch (NuGetProtocolException exception)
-        {
-            // NuGet.Protocol failures, including resource unavailability, are feed-side problems → 1.
-            await Console.Error.WriteLineAsync(exception.Message).ConfigureAwait(true);
-            return ExitCodeHelpers.ExitFailure;
-        }
-        catch (InvalidOperationException exception)
-        {
-            // The library reports an unavailable NuGet.Protocol resource with this type → 1.
-            await Console.Error.WriteLineAsync(exception.Message).ConfigureAwait(true);
-            return ExitCodeHelpers.ExitFailure;
-        }
         catch (OperationCanceledException)
         {
             // Ctrl-C cancels the token above; a cancelled run exits 130.
             return ExitCodeHelpers.ExitInterrupted;
         }
-        finally
+        catch (Exception exception) when (ExitCodeHelpers.TryFromException(exception, out int exitCode))
         {
-            Console.CancelKeyPress -= cancelHandler;
+            // Package-not-found-on-server (thrown by the composing services) and invalid version
+            // strings under strict parsing are usage errors; a NuGet.Protocol failure or an
+            // unavailable resource is a feed-side problem. Both report the message on stderr.
+            await Console.Error.WriteLineAsync(exception.Message).ConfigureAwait(true);
+            return exitCode;
         }
     }
 
     /// <summary>
     /// Builds the resolved options from the bound values plus the prefetched configuration strings.
-    /// Precedence resolution and mode-aware validation belong to <see cref="UnlistOptions"/>.
+    /// Precedence resolution, version-token triage and mode-aware validation belong to
+    /// <see cref="UnlistOptions"/>.
     /// </summary>
     private UnlistOptions ResolveOptions()
     {
-        string[] requestedVersions = Versions;
-
-        if (!UnlistAllVersions)
-        {
-            // Only version strings starting with a digit are considered; the rest are ignored.
-            requestedVersions =
-            [
-                .. requestedVersions.Where(version => !string.IsNullOrWhiteSpace(version)
-                                                      && char.IsDigit(version.Trim()[0])),
-            ];
-        }
-
         return UnlistOptions.Create(
-            PackageId, requestedVersions,
+            PackageId, Versions,
             ApiKey, _configuration[ConfigurationValueHelpers.ApiKeyConfigurationKey],
             _apiKeyGeneric, ServerUrl,
             _configuration[ConfigurationValueHelpers.ServerUrlConfigurationKey],
             _serverUrlGeneric, Backend, NonInteractive,
             IncludeZeroMajor, UseStrictParsing, UnlistAllVersions,
             DryRun, OutputMode);
-    }
-
-    private static string DescribeValidationFailure(UnlistOptionsValidationFailure failure)
-    {
-        // The two failures with an established message keep their localized wording: the API-key
-        // error moves to stderr, where it stays one line like every other diagnostic.
-        return failure.Field switch
-        {
-            nameof(UnlistOptions.ApiKey) => Resources.Exceptions_Configuration_NugetApiKey,
-            nameof(UnlistOptions.Versions) => Resources.Errors_Input_NoVersionStrings,
-            _ => $"Error: {failure.Message}",
-        };
     }
 
     /// <summary>
@@ -351,8 +286,8 @@ public class UnlistCommand
         {
             foreach (DryRunPlanLine line in plan)
             {
-                await Console.Out.WriteLineAsync(ToJsonPropertyLine(options.PackageId, line.Version,
-                    ToBucketStatus(line.Bucket))).ConfigureAwait(true);
+                await Console.Out.WriteLineAsync(NdjsonHelpers.ToPackageVersionLine(options.PackageId, line.Version,
+                    ToBucketStatus(line.Bucket).ToKebabCase())).ConfigureAwait(true);
             }
         }
         else
@@ -399,7 +334,7 @@ public class UnlistCommand
             foreach (PackageVersionOutcome outcome in outcomes)
             {
                 await Console.Out.WriteLineAsync(
-                    ToJsonPropertyLine(outcome.PackageId, outcome.Version, outcome.Status)).ConfigureAwait(true);
+                    NdjsonHelpers.ToPackageVersionLine(outcome.PackageId, outcome.Version, outcome.Status.ToKebabCase())).ConfigureAwait(true);
             }
 
             return;
@@ -450,22 +385,7 @@ public class UnlistCommand
         $"Version={outcome.Version.ToNormalizedString()} Status={outcome.Status.ToKebabCase()}";
 
     private static bool IsJsonOutput(UnlistOptions options) =>
-        string.Equals(options.OutputMode, "json", StringComparison.OrdinalIgnoreCase);
-
-    /// <summary>
-    /// One NDJSON line with exactly three fields in the fixed order package, version, status — no
-    /// envelope, no array wrapper, no additional fields. The version is the normalized string
-    /// and the package id is carried exactly as supplied.
-    /// </summary>
-    private static string ToJsonPropertyLine(string packageId, NuGetVersion version,
-        PackageVersionStatus status)
-    {
-        string package = JsonSerializer.Serialize(packageId);
-        string normalizedVersion = JsonSerializer.Serialize(version.ToNormalizedString());
-        string statusText = JsonSerializer.Serialize(status.ToKebabCase());
-
-        return $"{{\"package\":{package},\"version\":{normalizedVersion},\"status\":{statusText}}}";
-    }
+        OutputModeHelpers.IsJson(options.OutputMode);
 
     private static string DescribeBucket(DryRunBucket bucket) => bucket switch
     {

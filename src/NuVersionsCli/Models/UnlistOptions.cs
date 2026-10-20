@@ -34,11 +34,18 @@ public sealed record UnlistOptions
     /// <summary>
     /// The default output mode when none is supplied.
     /// </summary>
-    public const string DefaultOutputMode = "text";
+    public const string DefaultOutputMode = OutputModeHelpers.Text;
 
     public string PackageId { get; init; } = string.Empty;
 
     public IReadOnlyList<string> Versions { get; init; } = [];
+
+    /// <summary>
+    /// The version tokens that look like an unknown option. The argument tokeniser hands an
+    /// unknown option to the greedy versions position, so it has to be rejected rather than
+    /// dropped as a non-version string.
+    /// </summary>
+    public IReadOnlyList<string> UnknownOptions { get; init; } = [];
 
     public string? ApiKey { get; init; }
 
@@ -64,6 +71,12 @@ public sealed record UnlistOptions
     /// stays pure (no configuration or environment access inside). The precedence
     /// chains themselves live in <see cref="ConfigurationValueHelpers"/>.
     /// </summary>
+    /// <remarks>
+    /// The version tokens are triaged here rather than in the command: a token that looks like an
+    /// option is kept aside as an unknown option, and the rest are narrowed to the version
+    /// strings. The narrowing applies only when the run was not asked to unlist every version,
+    /// which is the only mode in which the supplied tokens are the versions themselves.
+    /// </remarks>
     public static UnlistOptions Create(
         string? packageId,
         IEnumerable<string>? versions,
@@ -81,10 +94,29 @@ public sealed record UnlistOptions
         bool dryRun,
         string? outputMode)
     {
+        string[] suppliedVersions = versions?.ToArray() ?? [];
+
+        // A token that starts with a dash is an option the parser did not recognise, not a
+        // version. It is never silently dropped as a non-version string.
+        string[] unknownOptions =
+        [
+            .. suppliedVersions.Where(static version => version.StartsWith('-')),
+        ];
+
+        // Only version strings starting with a digit are considered; the rest are ignored.
+        string[] requestedVersions = unlistAllVersions
+            ? suppliedVersions
+            :
+            [
+                .. suppliedVersions.Where(version => !string.IsNullOrWhiteSpace(version)
+                                                      && char.IsDigit(version.Trim()[0])),
+            ];
+
         return new UnlistOptions
         {
             PackageId = packageId ?? string.Empty,
-            Versions = versions?.ToArray() ?? [],
+            Versions = requestedVersions,
+            UnknownOptions = unknownOptions,
             ApiKey = ConfigurationValueHelpers.ResolveApiKey(apiKeyOption, apiKeyPrefixed, apiKeyGeneric),
             ServerUrl = ConfigurationValueHelpers.ResolveServerUrl(serverUrlOption, serverUrlPrefixed, serverUrlGeneric),
             Backend = string.IsNullOrWhiteSpace(backend) ? DefaultBackend : backend,
@@ -102,20 +134,29 @@ public sealed record UnlistOptions
     /// Dry-run mode skips the API-key requirement (delete requests are the only
     /// credential-bearing path); a real run requires it.
     /// </summary>
-    public IReadOnlyList<UnlistOptionsValidationFailure> Validate()
+    public IReadOnlyList<OptionsValidationFailure> Validate()
     {
-        List<UnlistOptionsValidationFailure> failures = [];
+        List<OptionsValidationFailure> failures = [];
+
+        // An unrecognized option is reported first: it is the most likely user mistake, and the
+        // one the parser could not catch for us.
+        foreach (string unknownOption in UnknownOptions)
+        {
+            failures.Add(new OptionsValidationFailure(
+                OptionsValidationFailure.UnknownOptionField,
+                string.Format(Resources.Errors_Input_UnrecognizedOption, unknownOption)));
+        }
 
         if (string.IsNullOrWhiteSpace(PackageId))
         {
-            failures.Add(new UnlistOptionsValidationFailure(
+            failures.Add(new OptionsValidationFailure(
                 nameof(PackageId),
-                "Package id is required."));
+                Resources.Failures_PackageId_Required));
         }
 
         if (string.IsNullOrWhiteSpace(ServerUrl))
         {
-            failures.Add(new UnlistOptionsValidationFailure(
+            failures.Add(new OptionsValidationFailure(
                 nameof(ServerUrl),
                 "Server URL must not be empty."));
         }
@@ -123,29 +164,28 @@ public sealed record UnlistOptions
         if (!string.Equals(Backend, "http", StringComparison.OrdinalIgnoreCase) &&
             !string.Equals(Backend, "sdk", StringComparison.OrdinalIgnoreCase))
         {
-            failures.Add(new UnlistOptionsValidationFailure(
+            failures.Add(new OptionsValidationFailure(
                 nameof(Backend),
                 "Invalid backend value. Valid values are: http, sdk."));
         }
 
         if (!UnlistAllVersions && Versions.Count == 0)
         {
-            failures.Add(new UnlistOptionsValidationFailure(
+            failures.Add(new OptionsValidationFailure(
                 nameof(Versions),
                 "At least one version string is required unless --unlist-all is set."));
         }
 
         if (!DryRun && string.IsNullOrEmpty(ApiKey))
         {
-            failures.Add(new UnlistOptionsValidationFailure(
+            failures.Add(new OptionsValidationFailure(
                 nameof(ApiKey),
                 "API key is required for a real run (dry-run mode skips this requirement)."));
         }
 
-        if (!string.Equals(OutputMode, "text", StringComparison.OrdinalIgnoreCase) &&
-            !string.Equals(OutputMode, "json", StringComparison.OrdinalIgnoreCase))
+        if (!OutputModeHelpers.IsValid(OutputMode))
         {
-            failures.Add(new UnlistOptionsValidationFailure(
+            failures.Add(new OptionsValidationFailure(
                 nameof(OutputMode),
                 Resources.Failures_OutputModes_InvalidOutputMode));
         }

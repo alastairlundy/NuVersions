@@ -1,3 +1,23 @@
+/*
+    NuVersions
+    Copyright (C) 2026 Alastair Lundy
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+     any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+using NuGet.Protocol.Core.Types;
+
 namespace NuVersionsCli.Helpers;
 
 internal static class ExitCodeHelpers
@@ -37,6 +57,44 @@ internal static class ExitCodeHelpers
         _ => throw new ArgumentOutOfRangeException(nameof(status), status,
             string.Format(Resources.Exceptions_ExitCodes_UnhandledStatus, nameof(PackageVersionStatus), nameof(ToExitCode))),
     };
+
+    /// <summary>
+    /// Maps a command-boundary exception to its documented exit code.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The mapping is the CLI's failure contract, so it lives here rather than in a catch clause
+    /// per command: an argument failure is a usage error, and a feed-side failure is a plain
+    /// failure. Cancellation is deliberately absent — it maps to its own code and prints nothing.
+    /// </para>
+    /// <para>
+    /// An exception this method does not recognise returns <see langword="false"/>, leaving the
+    /// caller to let it propagate: an unexpected fault still crashes with its stack trace.
+    /// </para>
+    /// </remarks>
+    /// <param name="exception">The exception that escaped the command body.</param>
+    /// <param name="exitCode">The documented exit code, when the exception is recognised.</param>
+    /// <returns><see langword="true"/> when the exception maps to a documented exit code.</returns>
+    internal static bool TryFromException(Exception exception, out int exitCode)
+    {
+        ArgumentNullException.ThrowIfNull(exception);
+
+        if (exception is ArgumentException)
+        {
+            exitCode = ExitUsage;
+            return true;
+        }
+
+        if (exception is NuGetProtocolException or InvalidOperationException)
+        {
+            exitCode = ExitFailure;
+            return true;
+        }
+
+        // Unused when this method returns false: the caller lets the exception propagate.
+        exitCode = default;
+        return false;
+    }
 
     /// <summary>
     /// Folds one outcome's code into the run's code. Rate-limited outranks cancelled, which outranks

@@ -16,6 +16,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+using NuGet.Protocol.Core.Types;
 using NuGet.Versioning;
 using NuVersionsCli;
 
@@ -55,6 +56,43 @@ public class ExitCodeMappingTests
         ];
 
         await Assert.That(codes).IsEquivalentTo([0, 1, 2, 3, 4, 130]);
+    }
+
+    [Test]
+    public async Task TryFromException_MapsAnArgumentFailureToTheUsageCode()
+    {
+        bool handled = ExitCodeHelpers.TryFromException(new ArgumentException("bad argument"), out int exitCode);
+
+        await Assert.That(handled).IsTrue();
+        await Assert.That(exitCode).IsEqualTo(ExitCodeHelpers.ExitUsage);
+    }
+
+    [Test]
+    public async Task TryFromException_MapsEveryFeedSideFailureToTheFailureCode()
+    {
+        bool protocolHandled = ExitCodeHelpers.TryFromException(
+            new TestProtocolException("the feed refused the request"), out int protocolCode);
+
+        await Assert.That(protocolHandled).IsTrue();
+        await Assert.That(protocolCode).IsEqualTo(ExitCodeHelpers.ExitFailure);
+
+        bool resourceHandled = ExitCodeHelpers.TryFromException(
+            new InvalidOperationException("the metadata resource is unavailable"), out int resourceCode);
+
+        await Assert.That(resourceHandled).IsTrue();
+        await Assert.That(resourceCode).IsEqualTo(ExitCodeHelpers.ExitFailure);
+    }
+
+    [Test]
+    public async Task TryFromException_LeavesCancellationAndUnknownFaultsUnclaimed()
+    {
+        // Cancellation maps to its own code and prints nothing, so the shared mapping never
+        // claims it: the command keeps its dedicated catch for it.
+        await Assert.That(ExitCodeHelpers.TryFromException(new OperationCanceledException(), out _)).IsFalse();
+
+        // An unexpected fault stays unhandled: the CLI is meant to crash with its stack trace
+        // rather than fold an unknown fault into a documented code.
+        await Assert.That(ExitCodeHelpers.TryFromException(new InvalidCastException(), out _)).IsFalse();
     }
 
     [Test]
@@ -101,5 +139,16 @@ public class ExitCodeMappingTests
 
         await Assert.That(run.ExitCode).IsEqualTo(ExitCodeHelpers.ExitUsage);
         await Assert.That(run.ExitCode is 0 or 1 or 2).IsTrue();
+    }
+
+    /// <summary>
+    /// A concrete <see cref="NuGetProtocolException"/>, which is abstract upstream: the mapping
+    /// matches on the base type, so any concrete subclass has to map the same way.
+    /// </summary>
+    private sealed class TestProtocolException : NuGetProtocolException
+    {
+        internal TestProtocolException(string message) : base(message)
+        {
+        }
     }
 }

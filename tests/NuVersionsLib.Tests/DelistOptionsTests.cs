@@ -86,7 +86,7 @@ public class DelistOptionsTests
     [Test]
     public async Task Validate_DryRunWithoutApiKey_HasNoFailures()
     {
-        IReadOnlyList<UnlistOptionsValidationFailure> failures = Valid(dryRun: true, apiKey: null).Validate();
+        IReadOnlyList<OptionsValidationFailure> failures = Valid(dryRun: true, apiKey: null).Validate();
 
         await Assert.That(failures).IsEmpty();
     }
@@ -94,7 +94,7 @@ public class DelistOptionsTests
     [Test]
     public async Task Validate_RealRunWithoutApiKey_FailsOnlyOnTheApiKeyRule()
     {
-        IReadOnlyList<UnlistOptionsValidationFailure> failures = Valid(dryRun: false, apiKey: null).Validate();
+        IReadOnlyList<OptionsValidationFailure> failures = Valid(dryRun: false, apiKey: null).Validate();
 
         await Assert.That(failures.Count).IsEqualTo(1);
         await Assert.That(failures[0].Field).IsEqualTo(nameof(UnlistOptions.ApiKey));
@@ -103,7 +103,7 @@ public class DelistOptionsTests
     [Test]
     public async Task Validate_RealRunWithApiKey_HasNoFailures()
     {
-        IReadOnlyList<UnlistOptionsValidationFailure> failures = Valid(dryRun: false, apiKey: "unit-test-api-key").Validate();
+        IReadOnlyList<OptionsValidationFailure> failures = Valid(dryRun: false, apiKey: "unit-test-api-key").Validate();
 
         await Assert.That(failures).IsEmpty();
     }
@@ -113,7 +113,7 @@ public class DelistOptionsTests
     {
         UnlistOptions options = Valid() with { PackageId = "   " };
 
-        IReadOnlyList<UnlistOptionsValidationFailure> failures = options.Validate();
+        IReadOnlyList<OptionsValidationFailure> failures = options.Validate();
 
         await Assert.That(failures.Count).IsEqualTo(1);
         await Assert.That(failures[0].Field).IsEqualTo(nameof(UnlistOptions.PackageId));
@@ -124,7 +124,7 @@ public class DelistOptionsTests
     {
         UnlistOptions options = Valid() with { ServerUrl = " " };
 
-        IReadOnlyList<UnlistOptionsValidationFailure> failures = options.Validate();
+        IReadOnlyList<OptionsValidationFailure> failures = options.Validate();
 
         await Assert.That(failures.Count).IsEqualTo(1);
         await Assert.That(failures[0].Field).IsEqualTo(nameof(UnlistOptions.ServerUrl));
@@ -134,7 +134,7 @@ public class DelistOptionsTests
     public async Task Validate_InvalidBackend_FailsWhileHttpAndSdkPass()
     {
         UnlistOptions invalid = Valid() with { Backend = "ftp" };
-        IReadOnlyList<UnlistOptionsValidationFailure> failures = invalid.Validate();
+        IReadOnlyList<OptionsValidationFailure> failures = invalid.Validate();
 
         await Assert.That(failures.Count).IsEqualTo(1);
         await Assert.That(failures[0].Field).IsEqualTo(nameof(UnlistOptions.Backend));
@@ -147,7 +147,7 @@ public class DelistOptionsTests
     public async Task Validate_NoVersionsFailsUnlessUnlistAllIsSet()
     {
         UnlistOptions noVersions = Valid() with { Versions = [] };
-        IReadOnlyList<UnlistOptionsValidationFailure> failures = noVersions.Validate();
+        IReadOnlyList<OptionsValidationFailure> failures = noVersions.Validate();
 
         await Assert.That(failures.Count).IsEqualTo(1);
         await Assert.That(failures[0].Field).IsEqualTo(nameof(UnlistOptions.Versions));
@@ -160,7 +160,7 @@ public class DelistOptionsTests
     public async Task Validate_InvalidOutputMode_FailsWhileTextAndJsonPass()
     {
         UnlistOptions invalid = Valid() with { OutputMode = "xml" };
-        IReadOnlyList<UnlistOptionsValidationFailure> failures = invalid.Validate();
+        IReadOnlyList<OptionsValidationFailure> failures = invalid.Validate();
 
         await Assert.That(failures.Count).IsEqualTo(1);
         await Assert.That(failures[0].Field).IsEqualTo(nameof(UnlistOptions.OutputMode));
@@ -184,7 +184,7 @@ public class DelistOptionsTests
             UnlistAllVersions = false,
         };
 
-        IReadOnlyList<UnlistOptionsValidationFailure> failures = options.Validate();
+        IReadOnlyList<OptionsValidationFailure> failures = options.Validate();
 
         await Assert.That(failures.Count).IsEqualTo(6);
         await Assert.That(failures[0].Field).IsEqualTo(nameof(UnlistOptions.PackageId));
@@ -193,6 +193,45 @@ public class DelistOptionsTests
         await Assert.That(failures[3].Field).IsEqualTo(nameof(UnlistOptions.Versions));
         await Assert.That(failures[4].Field).IsEqualTo(nameof(UnlistOptions.ApiKey));
         await Assert.That(failures[5].Field).IsEqualTo(nameof(UnlistOptions.OutputMode));
+    }
+
+    [Test]
+    public async Task Create_WithAnOptionLookingToken_KeepsItAsideAsAnUnknownOption()
+    {
+        // The argument tokeniser hands an unknown option to the greedy versions position, so the
+        // triage has to keep it apart from the version strings rather than drop it.
+        UnlistOptions options = UnlistOptions.Create(
+            packageId: "Demo.Package", versions: ["1.0.0", "--typo"], apiKeyOption: null,
+            apiKeyPrefixed: null, apiKeyGeneric: null, serverUrlOption: null, serverUrlPrefixed: null,
+            serverUrlGeneric: null, backend: null, nonInteractive: false, includeZeroMajor: false,
+            useStrictParsing: false, unlistAllVersions: false, dryRun: false, outputMode: null);
+
+        await Assert.That(options.UnknownOptions).IsEquivalentTo(new[] { "--typo" });
+        await Assert.That(options.Versions).IsEquivalentTo(new[] { "1.0.0" });
+    }
+
+    [Test]
+    public async Task Create_WithAVersionToken_ReportsNoUnknownOption()
+    {
+        UnlistOptions options = UnlistOptions.Create(
+            packageId: "Demo.Package", versions: ["1.0.0"], apiKeyOption: null,
+            apiKeyPrefixed: null, apiKeyGeneric: null, serverUrlOption: null, serverUrlPrefixed: null,
+            serverUrlGeneric: null, backend: null, nonInteractive: false, includeZeroMajor: false,
+            useStrictParsing: false, unlistAllVersions: false, dryRun: false, outputMode: null);
+
+        await Assert.That(options.UnknownOptions).IsEmpty();
+    }
+
+    [Test]
+    public async Task Validate_WithAnUnknownOption_FailsWithTheUnknownOptionFieldOnly()
+    {
+        UnlistOptions options = Valid() with { UnknownOptions = ["--typo"] };
+
+        IReadOnlyList<OptionsValidationFailure> failures = options.Validate();
+
+        await Assert.That(failures.Count).IsEqualTo(1);
+        await Assert.That(failures[0].Field).IsEqualTo(OptionsValidationFailure.UnknownOptionField);
+        await Assert.That(failures[0].Message).Contains("--typo");
     }
 
     /// <summary>An otherwise-valid, real-run configuration; each test overrides one rule at a time.</summary>

@@ -69,6 +69,15 @@ namespace NuVersionsCli.Localizations {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Unrecognized option: '{0}'..
+        /// </summary>
+        internal static string Errors_Input_UnrecognizedOption {
+            get {
+                return ResourceManager.GetString("Errors.Input.UnrecognizedOption", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Unhandled {0} member..
         /// </summary>
         internal static string Exceptions_BucketStatus_Unhandled {
@@ -137,6 +146,15 @@ namespace NuVersionsCli.Localizations {
         internal static string Failures_OutputModes_InvalidOutputMode {
             get {
                 return ResourceManager.GetString("Failures.OutputModes.InvalidOutputMode", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Package id is required..
+        /// </summary>
+        internal static string Failures_PackageId_Required {
+            get {
+                return ResourceManager.GetString("Failures.PackageId.Required", resourceCulture);
             }
         }
     }

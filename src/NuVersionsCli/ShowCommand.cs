@@ -17,9 +17,6 @@
  */
 
 using System.ComponentModel;
-using System.Text.Json;
-using NuGet.Protocol.Core.Types;
-using NuGet.Versioning;
 using NuVersionsCli.Helpers;
 
 namespace NuVersionsCli;
@@ -47,11 +44,6 @@ namespace NuVersionsCli;
     Description = "Show whether each version of a NuGet package is listed or unlisted.")]
 public class ShowCommand
 {
-    private const int ExitSuccess = 0;
-    private const int ExitFailure = 1;
-    private const int ExitUsage = 2;
-    private const int ExitInterrupted = 130;
-
     private readonly IConfiguration _configuration;
     private readonly IPackageVersionService _packageVersionService;
     private readonly string? _serverUrlGeneric;
@@ -80,80 +72,70 @@ public class ShowCommand
     /// object per version.
     /// </summary>
     [CliOption(Name = "--output", Required = false)]
-    [DefaultValue(UnlistOptions.DefaultOutputMode)]
-    public string OutputMode { get; set; } = UnlistOptions.DefaultOutputMode;
+    [DefaultValue(ShowOptions.DefaultOutputMode)]
+    public string OutputMode { get; set; } = ShowOptions.DefaultOutputMode;
 
     public async Task<int> RunAsync()
     {
-        if (string.IsNullOrWhiteSpace(PackageId))
-        {
-            await Console.Error.WriteLineAsync("Error: Package id is required.").ConfigureAwait(true);
-            return ExitUsage;
-        }
+        ShowOptions options = ResolveOptions();
 
-        if (!string.Equals(OutputMode, "text", StringComparison.OrdinalIgnoreCase) &&
-            !string.Equals(OutputMode, "json", StringComparison.OrdinalIgnoreCase))
-        {
-            await Console.Error.WriteLineAsync(
-                "Error: Invalid output mode. Valid values are: text, JSON.").ConfigureAwait(true);
-            return ExitUsage;
-        }
+        IReadOnlyList<OptionsValidationFailure> failures = options.Validate();
 
-        string serverUrl = ConfigurationValueHelpers.ResolveServerUrl(ServerUrl,
-            _configuration[ConfigurationValueHelpers.ServerUrlConfigurationKey], _serverUrlGeneric);
+        if (failures.Count > 0)
+        {
+            foreach (OptionsValidationFailure failure in failures)
+            {
+                await Console.Error.WriteLineAsync(ValidationFailureHelpers.Describe(failure)).ConfigureAwait(true);
+            }
+
+            return ExitCodeHelpers.ExitUsage;
+        }
 
         using CancellationTokenSource cancellationSource = new();
-        ConsoleCancelEventHandler cancelHandler = (_, eventArgs) =>
-        {
-            eventArgs.Cancel = true;
-            cancellationSource.Cancel();
-        };
-        Console.CancelKeyPress += cancelHandler;
+        using IDisposable ctrlC = CtrlCHelpers.Register(cancellationSource);
 
         try
         {
             List<PackageVersionListingInfo> versions = [];
 
             await foreach (PackageVersionListingInfo info in _packageVersionService.EnumerateAllPackageVersionsAsync(
-                               serverUrl, "show", PackageId, cancellationSource.Token).ConfigureAwait(true))
+                               options.ServerUrl, "show", options.PackageId, cancellationSource.Token).ConfigureAwait(true))
             {
                 versions.Add(info);
             }
 
-            bool json = string.Equals(OutputMode, "json", StringComparison.OrdinalIgnoreCase);
+            bool json = OutputModeHelpers.IsJson(options.OutputMode);
 
             foreach (PackageVersionListingInfo info in versions.OrderBy(static v => v.PackageVersion))
             {
-                await Console.Out.WriteLineAsync(DescribeListing(PackageId, info, json)).ConfigureAwait(true);
+                await Console.Out.WriteLineAsync(DescribeListing(options.PackageId, info, json)).ConfigureAwait(true);
             }
 
-            return ExitSuccess;
-        }
-        catch (ArgumentException exception)
-        {
-            // Package-not-found-on-server is thrown by the composing services.
-            await Console.Error.WriteLineAsync(exception.Message).ConfigureAwait(true);
-            return ExitUsage;
-        }
-        catch (NuGetProtocolException exception)
-        {
-            await Console.Error.WriteLineAsync(exception.Message).ConfigureAwait(true);
-            return ExitFailure;
-        }
-        catch (InvalidOperationException exception)
-        {
-            // The library reports an unavailable NuGet.Protocol resource with this type.
-            await Console.Error.WriteLineAsync(exception.Message).ConfigureAwait(true);
-            return ExitFailure;
+            return ExitCodeHelpers.ExitSuccess;
         }
         catch (OperationCanceledException)
         {
-            return ExitInterrupted;
+            return ExitCodeHelpers.ExitInterrupted;
         }
-        finally
+        catch (Exception exception) when (ExitCodeHelpers.TryFromException(exception, out int exitCode))
         {
-            Console.CancelKeyPress -= cancelHandler;
+            // Package-not-found-on-server is a usage error; a NuGet.Protocol failure or an
+            // unavailable resource is a feed-side problem. Both report the message on stderr.
+            await Console.Error.WriteLineAsync(exception.Message).ConfigureAwait(true);
+            return exitCode;
         }
+    }
+
+    /// <summary>
+    /// Builds the resolved options from the bound values plus the prefetched configuration strings.
+    /// Precedence resolution and validation belong to <see cref="ShowOptions"/>.
+    /// </summary>
+    private ShowOptions ResolveOptions()
+    {
+        return ShowOptions.Create(
+            PackageId, ServerUrl,
+            _configuration[ConfigurationValueHelpers.ServerUrlConfigurationKey],
+            _serverUrlGeneric, OutputMode);
     }
 
     /// <summary>
@@ -162,26 +144,13 @@ public class ShowCommand
     /// </summary>
     private static string DescribeListing(string packageId, PackageVersionListingInfo info, bool json)
     {
+        string status = info.IsListed ? "listed" : "unlisted";
+
         if (json)
         {
-            return ToJsonPropertyLine(packageId, info.PackageVersion,
-                info.IsListed ? "listed" : "unlisted");
+            return NdjsonHelpers.ToPackageVersionLine(packageId, info.PackageVersion, status);
         }
 
-        return $"Version={info.PackageVersion.ToNormalizedString()} " +
-               $"Status={(info.IsListed ? "listed" : "unlisted")}";
-    }
-
-    /// <summary>
-    /// The NDJSON line shared with the unlist command: exactly three fields in the fixed order
-    /// package, version, status — no envelope, no array wrapper, no additional fields.
-    /// </summary>
-    private static string ToJsonPropertyLine(string packageId, NuGetVersion version, string status)
-    {
-        string package = JsonSerializer.Serialize(packageId);
-        string normalizedVersion = JsonSerializer.Serialize(version.ToNormalizedString());
-        string statusText = JsonSerializer.Serialize(status);
-
-        return $"{{\"package\":{package},\"version\":{normalizedVersion},\"status\":{statusText}}}";
+        return $"Version={info.PackageVersion.ToNormalizedString()} Status={status}";
     }
 }

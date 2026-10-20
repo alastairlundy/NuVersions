@@ -123,6 +123,26 @@ public class CliIntegrationExitCodeTests
     }
 
     [Test]
+    public async Task UnknownOption_ExitsTwo_AndNamesTheOption()
+    {
+        using MockNuGetV3Server server = MockNuGetV3Server.Start();
+        string packageId = NewPackageId("ExitUsageUnknownOption");
+
+        // The parser hands an unknown option to the greedy versions position; the CLI has to
+        // reject it as the usage error it is rather than let it vanish as a non-version string.
+        CommandRun run = await CliIntegrationHarness.RunAsync(
+            "--package-id", packageId,
+            "--server-url", server.ServiceIndexUrl,
+            "--api-key", CliIntegrationHarness.TestApiKey,
+            "--typo");
+
+        await Assert.That(run.ExitCode).IsEqualTo(ExitCodeHelpers.ExitUsage);
+        await Assert.That(run.StdErr).Contains("Unrecognized option: '--typo'.");
+        await Assert.That(run.StdOut).IsEmpty();
+        await Assert.That(server.Requests).IsEmpty();
+    }
+
+    [Test]
     public async Task InvalidVersionStringUnderStrictParsing_ExitsTwo()
     {
         using MockNuGetV3Server server = MockNuGetV3Server.Start();

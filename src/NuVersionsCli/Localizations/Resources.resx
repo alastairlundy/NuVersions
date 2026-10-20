@@ -27,6 +27,12 @@
     <data name="Errors.Input.NoVersionStrings" xml:space="preserve">
         <value>Error: No valid version strings provided.</value>
     </data>
+    <data name="Errors.Input.UnrecognizedOption" xml:space="preserve">
+        <value>Unrecognized option: '{0}'.</value>
+    </data>
+    <data name="Failures.PackageId.Required" xml:space="preserve">
+        <value>Package id is required.</value>
+    </data>
     <data name="Exceptions.ExitCodes.UnhandledStatus" xml:space="preserve">
         <value>Unhandled {0} member: decide its exit code in {1}.</value>
     </data>

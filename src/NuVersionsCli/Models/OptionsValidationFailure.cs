@@ -14,7 +14,7 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
+ */
 
 namespace NuVersionsCli.Models;
 
@@ -24,4 +24,11 @@ namespace NuVersionsCli.Models;
 /// </summary>
 /// <param name="Field">The option field that failed validation.</param>
 /// <param name="Message">Human-readable description of the failure.</param>
-public sealed record UnlistOptionsValidationFailure(string Field, string Message);
+public sealed record OptionsValidationFailure(string Field, string Message)
+{
+    /// <summary>
+    /// The field name reported for a version token that looks like an unrecognized option. It
+    /// stands for no option field of its own, so it gets its own name rather than borrowing one.
+    /// </summary>
+    public const string UnknownOptionField = "UnknownOption";
+}
