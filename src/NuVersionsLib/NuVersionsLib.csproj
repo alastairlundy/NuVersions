@@ -18,6 +18,7 @@
         <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
         <IsTrimmable>false</IsTrimmable>
         <IsAotCompatible>false</IsAotCompatible>
+        <Version>0.3.0</Version>
     </PropertyGroup>
 
     <ItemGroup>
