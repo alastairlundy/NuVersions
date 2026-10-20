@@ -14,6 +14,8 @@
         <RepositoryType>git</RepositoryType>
         <PackageTags>unlist;nuget;dotnet-tool;cli</PackageTags>
         <Nullable>enable</Nullable>
+        <IsTrimmable>true</IsTrimmable>
+        <IsAoTCompatible>true</IsAoTCompatible>
     </PropertyGroup>
 
     <ItemGroup>
