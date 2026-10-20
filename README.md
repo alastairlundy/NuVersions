@@ -1,4 +1,4 @@
-# NuVersions
+# NuVersions (formerly PreReleaseDelist)
 
 A CLI to show how a NuGet package's versions are listed on a NuGet server, and to unlist versions of the package.
 
