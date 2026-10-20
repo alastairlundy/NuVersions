@@ -33,7 +33,7 @@ public class DelistOptionsTests
         UnlistOptions options = UnlistOptions.Create(
             packageId: null, versions: null, apiKeyOption: null, apiKeyPrefixed: null, apiKeyGeneric: null,
             serverUrlOption: null, serverUrlPrefixed: null, serverUrlGeneric: null,
-            backend: null, nonInteractive: false, includeZeroMajor: false, useStrictParsing: false,
+            backend: null, nonInteractive: false, useStrictParsing: false,
             unlistAllVersions: false, dryRun: false, outputMode: null);
 
         await Assert.That(options.PackageId).IsEqualTo(string.Empty);
@@ -52,7 +52,7 @@ public class DelistOptionsTests
         UnlistOptions options = UnlistOptions.Create(
             packageId: "Demo.Package", versions: ["1.0.0"], apiKeyOption: null, apiKeyPrefixed: null,
             apiKeyGeneric: null, serverUrlOption: null, serverUrlPrefixed: null, serverUrlGeneric: null,
-            backend: "  ", nonInteractive: false, includeZeroMajor: false, useStrictParsing: true,
+            backend: "  ", nonInteractive: false, useStrictParsing: true,
             unlistAllVersions: false, dryRun: false, outputMode: "\t");
 
         await Assert.That(options.Backend).IsEqualTo(UnlistOptions.DefaultBackend);
@@ -67,7 +67,7 @@ public class DelistOptionsTests
             apiKeyPrefixed: "prefixed-key", apiKeyGeneric: "generic-key",
             serverUrlOption: "https://option.example", serverUrlPrefixed: "https://prefixed.example",
             serverUrlGeneric: "https://generic.example", backend: "sdk", nonInteractive: true,
-            includeZeroMajor: true, useStrictParsing: false, unlistAllVersions: true, dryRun: true,
+            useStrictParsing: false, unlistAllVersions: true, dryRun: true,
             outputMode: "json");
 
         await Assert.That(options.PackageId).IsEqualTo("Demo.Package");
@@ -77,7 +77,6 @@ public class DelistOptionsTests
         await Assert.That(options.Backend).IsEqualTo("sdk");
         await Assert.That(options.OutputMode).IsEqualTo("json");
         await Assert.That(options.NonInteractive).IsTrue();
-        await Assert.That(options.IncludeZeroMajor).IsTrue();
         await Assert.That(options.UseStrictParsing).IsFalse();
         await Assert.That(options.UnlistAllVersions).IsTrue();
         await Assert.That(options.DryRun).IsTrue();
@@ -203,7 +202,7 @@ public class DelistOptionsTests
         UnlistOptions options = UnlistOptions.Create(
             packageId: "Demo.Package", versions: ["1.0.0", "--typo"], apiKeyOption: null,
             apiKeyPrefixed: null, apiKeyGeneric: null, serverUrlOption: null, serverUrlPrefixed: null,
-            serverUrlGeneric: null, backend: null, nonInteractive: false, includeZeroMajor: false,
+            serverUrlGeneric: null, backend: null, nonInteractive: false,
             useStrictParsing: false, unlistAllVersions: false, dryRun: false, outputMode: null);
 
         await Assert.That(options.UnknownOptions).IsEquivalentTo(new[] { "--typo" });
@@ -216,7 +215,7 @@ public class DelistOptionsTests
         UnlistOptions options = UnlistOptions.Create(
             packageId: "Demo.Package", versions: ["1.0.0"], apiKeyOption: null,
             apiKeyPrefixed: null, apiKeyGeneric: null, serverUrlOption: null, serverUrlPrefixed: null,
-            serverUrlGeneric: null, backend: null, nonInteractive: false, includeZeroMajor: false,
+            serverUrlGeneric: null, backend: null, nonInteractive: false,
             useStrictParsing: false, unlistAllVersions: false, dryRun: false, outputMode: null);
 
         await Assert.That(options.UnknownOptions).IsEmpty();

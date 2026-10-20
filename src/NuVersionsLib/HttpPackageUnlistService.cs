@@ -65,21 +65,20 @@ public class HttpPackageUnlistService : IPackageUnlistService
     }
 
     /// <summary>
-    /// Requests the unlisting of all prerelease versions of a NuGet package.
+    /// Requests the unlisting of all prerelease versions of a NuGet package. Stable versions with
+    /// Major == 0 count as prerelease and are unlisted alongside them.
     /// </summary>
     /// <param name="nugetApiUrl">The URL of the NuGet API.</param>
     /// <param name="nugetApiKey">The API key for authenticating with the NuGet service.</param>
     /// <param name="packageId">The identifier of the NuGet package to unlist versions for.</param>
-    /// <param name="includeZeroMajorVersions">When true, stable versions with Major == 0 are also unlisted alongside prerelease versions.</param>
     /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
     /// <returns>An asynchronous sequence containing one <see cref="PackageVersionOutcome"/> per requested version.</returns>
     public async IAsyncEnumerable<PackageVersionOutcome> RequestPackageUnlistingAsync(
         string nugetApiUrl, string nugetApiKey, string packageId,
-        bool includeZeroMajorVersions = false,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         IAsyncEnumerable<PackageVersionOutcome> results = UnlistRun.ExecuteAsync(nugetApiUrl, nugetApiKey,
-            packageId, includeZeroMajorVersions, UnlistVersionAsync, _packageVersionService,
+            packageId, UnlistVersionAsync, _packageVersionService,
             _packageAvailabilityDetector, cancellationToken);
 
         await foreach (PackageVersionOutcome outcome in results.ConfigureAwait(false))

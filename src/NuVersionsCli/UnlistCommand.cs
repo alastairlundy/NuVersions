@@ -108,12 +108,6 @@ public class UnlistCommand
     public string Backend { get; set; } = "http";
 
     /// <summary>
-    /// Includes stable Major==0 versions when using --unlist-all.
-    /// </summary>
-    [CliOption(Name = "--include-zero-major", Required = false)]
-    public bool IncludeZeroMajor { get; set; } = false;
-
-    /// <summary>
     /// Prints the unlist plan without sending any unlist request. No API key is required in
     /// this mode, and it exits only with 0, 1, or 2.
     /// </summary>
@@ -186,7 +180,7 @@ public class UnlistCommand
             _apiKeyGeneric, ServerUrl,
             _configuration[ConfigurationValueHelpers.ServerUrlConfigurationKey],
             _serverUrlGeneric, Backend, NonInteractive,
-            IncludeZeroMajor, UseStrictParsing, UnlistAllVersions,
+            UseStrictParsing, UnlistAllVersions,
             DryRun, OutputMode);
     }
 
@@ -217,7 +211,7 @@ public class UnlistCommand
         if (options.UnlistAllVersions)
         {
             results = unlistService.RequestPackageUnlistingAsync(options.ServerUrl, options.ApiKey,
-                options.PackageId, options.IncludeZeroMajor, cancellationToken);
+                options.PackageId, cancellationToken);
         }
         else
         {
@@ -266,7 +260,7 @@ public class UnlistCommand
 
         IList<NuGetVersion> requestedVersions = options.UnlistAllVersions
             ? await _packageVersionService.GetPrereleasePackageVersionsAsync(options.ServerUrl, readApiKey,
-                options.PackageId, options.IncludeZeroMajor, cancellationToken).ConfigureAwait(true)
+                options.PackageId, cancellationToken).ConfigureAwait(true)
             : ParseVersions([.. options.Versions], options.UseStrictParsing);
 
         IDictionary<NuGetVersion, PackageVersionListingInfo> listingInfo =

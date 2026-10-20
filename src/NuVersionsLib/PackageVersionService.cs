@@ -33,17 +33,16 @@ public class PackageVersionService : IPackageVersionService
     }
 
     /// <summary>
-    /// Enumerates prerelease package versions from a NuGet repository.
+    /// Enumerates prerelease package versions from a NuGet repository. Stable versions with Major == 0
+    /// count as prerelease (see <see cref="IsTargetPrereleaseVersion"/>).
     /// </summary>
     /// <param name="nugetApiUrl">The URL of the NuGet API.</param>
     /// <param name="nugetApiKey">The API key for authentication against the NuGet API.</param>
     /// <param name="packageId">The identifier of the package to retrieve versions for.</param>
-    /// <param name="includeZeroMajorVersions">When true, stable versions with Major == 0 are included alongside prerelease versions.</param>
     /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
-    /// <returns>An asynchronous sequence of prerelease <see cref="NuGetVersion"/> objects matching the specified criteria.</returns>
+    /// <returns>An asynchronous sequence of prerelease <see cref="NuGetVersion"/> objects.</returns>
     public async IAsyncEnumerable<NuGetVersion> EnumeratePrereleasePackageVersionsAsync(string nugetApiUrl,
         string nugetApiKey, string packageId,
-        bool includeZeroMajorVersions = false,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrEmpty(nugetApiUrl);
@@ -68,24 +67,23 @@ public class PackageVersionService : IPackageVersionService
             yield break;
         }
 
-        foreach (NuGetVersion version in allPackageVersions.Where(v => IsTargetPrereleaseVersion(v, includeZeroMajorVersions)))
+        foreach (NuGetVersion version in allPackageVersions.Where(IsTargetPrereleaseVersion))
         {
             yield return version;
         }
     }
 
     /// <summary>
-    /// Retrieves an array of prerelease package versions from a NuGet repository.
+    /// Retrieves an array of prerelease package versions from a NuGet repository. Stable versions with
+    /// Major == 0 count as prerelease (see <see cref="IsTargetPrereleaseVersion"/>).
     /// </summary>
     /// <param name="nugetApiUrl">The URL of the NuGet API.</param>
     /// <param name="nugetApiKey">The API key for authentication against the NuGet API.</param>
     /// <param name="packageId">The identifier of the package to retrieve versions for.</param>
-    /// <param name="includeZeroMajorVersions">When true, stable versions with Major == 0 are included alongside prerelease versions.</param>
     /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
-    /// <returns>An array of prerelease NuGet version strings matching the specified criteria.</returns>
+    /// <returns>An array of prerelease <see cref="NuGetVersion"/> objects.</returns>
     public async Task<NuGetVersion[]> GetPrereleasePackageVersionsAsync(string nugetApiUrl, string nugetApiKey,
         string packageId,
-        bool includeZeroMajorVersions = false,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrEmpty(nugetApiUrl);
@@ -108,7 +106,7 @@ public class PackageVersionService : IPackageVersionService
         if (allPackageVersions is null)
             return [];
 
-        return allPackageVersions.Where(v => IsTargetPrereleaseVersion(v, includeZeroMajorVersions))
+        return allPackageVersions.Where(IsTargetPrereleaseVersion)
             .ToArray();
     }
 
@@ -301,8 +299,14 @@ public class PackageVersionService : IPackageVersionService
         return metadata;
     }
 
-    internal static bool IsTargetPrereleaseVersion(NuGetVersion v, bool includeZeroMajorVersions)
+    /// <summary>
+    /// Decides whether a version counts as pre-release for this tool: any version with a release label
+    /// (<c>1.0.0-beta</c>) plus any stable version with Major == 0 (<c>0.7.0</c>). SemVer reserves the
+    /// whole <c>0.x</c> range for initial development, so those stable versions are pre-release in
+    /// everything but notation, and <c>--unlist-all</c> picks them up without a separate flag.
+    /// </summary>
+    internal static bool IsTargetPrereleaseVersion(NuGetVersion v)
     {
-        return v.IsPrerelease || (includeZeroMajorVersions && v.Major == 0);
+        return v.IsPrerelease || v.Major == 0;
     }
 }

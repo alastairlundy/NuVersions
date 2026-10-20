@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## Unreleased
+
+### Changed
+
+- `--unlist-all` now treats stable `0.x` (Major == 0) versions as pre-release: they are enumerated
+  and unlisted alongside label-carrying pre-release versions, so a package published only as `0.x`
+  is no longer skipped by a run that printed nothing and exited `0`.
+
+### Removed
+
+- `--include-zero-major`. Including stable `0.x` versions is now part of the pre-release definition
+  itself (semver reserves the whole `0.x` range for initial development), so there is no flag left
+  to opt in — or out — of it.
+
 ## 0.3.0 - 20206-10-20
 
 ### Added

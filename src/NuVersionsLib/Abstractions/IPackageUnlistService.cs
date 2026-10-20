@@ -24,16 +24,16 @@ namespace NuVersionsLib.Abstractions;
 public interface IPackageUnlistService
 {
     /// <summary>
-    /// Requests the unlisting of all prerelease versions of a NuGet package.
+    /// Requests the unlisting of all prerelease versions of a NuGet package. Stable versions with
+    /// Major == 0 count as prerelease and are unlisted alongside them.
     /// </summary>
     /// <param name="nugetApiUrl">The URL of the NuGet API endpoint to which the request will be sent.</param>
     /// <param name="nugetApiKey">The API key required for authentication with the NuGet service.</param>
     /// <param name="packageName">The name of the package from which pre-release versions are to be unlisted.</param>
-    /// <param name="includeZeroMajorVersions">When true, stable versions with Major == 0 are also unlisted alongside prerelease versions.</param>
     /// <param name="cancellationToken">A cancellation token that can be used to request cancellation of the operation.</param>
     /// <returns>An asynchronous sequence containing one <see cref="PackageVersionOutcome"/> per requested version.</returns>
     IAsyncEnumerable<PackageVersionOutcome> RequestPackageUnlistingAsync(
-        string nugetApiUrl, string nugetApiKey, string packageName, bool includeZeroMajorVersions = false,
+        string nugetApiUrl, string nugetApiKey, string packageName,
         CancellationToken cancellationToken = default);
 
     /// <summary>

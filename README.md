@@ -125,8 +125,7 @@ nuversions unlist --package-id "MyPackage" --api-key "myApiKey" "1.0.0-alpha.1" 
 | `--package-id`         | string           | Yes                                 | —                                     | The ID of the package to unlist versions of, e.g. `MyPackage`.                                                                                                                                                                                                                                                                                                                                                      |
 | `--api-key`            | string           | Yes*                                | —                                     | The NuGet API key to authenticate with. If omitted, the CLI falls back to the `NUVERSIONS_NuGetApiKey` or `NUGET_API_KEY` environment variables.                                                                                                                                                                                                                                                                    |
 | `--server-url`         | string           | No                                  | `https://api.nuget.org/v3/index.json` | The NuGet server's V3 service index URL. Useful for third-party NuGet servers. Falls back to the `NUVERSIONS_NuGetServerUrl` or `NUGET_SERVER_URL` environment variables.                                                                                                                                                                                                                                           |
-| `--unlist-all`         | boolean          | No                                  | `false`                               | Unlist all pre-release versions of the package instead of the explicitly listed `versions`.                                                                                                                                                                                                                                                                                                                         |
-| `--include-zero-major` | boolean          | No                                  | `false`                               | With `--unlist-all`, also include stable `0.x` (Major == 0) versions.                                                                                                                                                                                                                                                                                                                                                |
+| `--unlist-all`         | boolean          | No                                  | `false`                               | Unlist all pre-release versions of the package instead of the explicitly listed `versions`. Pre-release means any version with a release label (`1.0.0-beta`) **or** any stable `0.x` version (Major == 0), matching semver's initial-development range.                                                                                                                                                           |
 | `--use-strict-parsing` | boolean          | No                                  | `true`                                | When `true`, an invalid version string causes an error. When `false`, invalid version strings are silently skipped.                                                                                                                                                                                                                                                                                                 |
 | `--backend`            | `http` \| `sdk`  | No                                  | `http`                                | Which unlisting backend to use: the V3 `http` API, or the .NET SDK's package deprecation/unlist support (`sdk`).                                                                                                                                                                                                                                                                                                    |
 | `--non-interactive`    | boolean          | No                                  | `false`                               | Print one machine-friendly `Version=<version> Status=<kebab-case>` line per version on stdout and exit non-zero if any version failed. Useful in CI.                                                                                                                                                                                                                                                                |
@@ -262,16 +261,11 @@ Unlist a broken or vulnerable stable release. Stable versions are unlisted the s
 nuversions unlist --package-id "MyPackage" --api-key "myApiKey" "1.4.2"
 ```
 
-Unlist all pre-release versions of a package:
+Unlist all pre-release versions of a package — stable `0.x` versions count as pre-release, so they
+are unlisted too:
 
 ```bash
 nuversions unlist --package-id "MyPackage" --unlist-all true --api-key "myApiKey"
-```
-
-Unlist all pre-release versions, including stable `0.x` versions:
-
-```bash
-nuversions unlist --package-id "MyPackage" --unlist-all true --include-zero-major true --api-key "myApiKey"
 ```
 
 Unlist from a third-party NuGet server:

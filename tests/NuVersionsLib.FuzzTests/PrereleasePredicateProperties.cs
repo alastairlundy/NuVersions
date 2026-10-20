@@ -32,11 +32,11 @@ public class PrereleasePredicateProperties
         if (!version.IsPrerelease)
             return true;
 
-        return PackageVersionService.IsTargetPrereleaseVersion(version, includeZeroMajorVersions: false);
+        return PackageVersionService.IsTargetPrereleaseVersion(version);
     }
 
     [Test, FsCheckProperty]
-    public bool IsTargetPrereleaseVersion_StableZeroMajor_OnlyIncludedWhenFlagSet(string input)
+    public bool IsTargetPrereleaseVersion_StableZeroMajor_AlwaysIncluded(string input)
     {
         if (!NuGetVersion.TryParse(input, out NuGetVersion? version))
             return true;
@@ -44,10 +44,8 @@ public class PrereleasePredicateProperties
         if (version.IsPrerelease || version.Major != 0)
             return true;
 
-        bool withoutFlag = PackageVersionService.IsTargetPrereleaseVersion(version, includeZeroMajorVersions: false);
-        bool withFlag = PackageVersionService.IsTargetPrereleaseVersion(version, includeZeroMajorVersions: true);
-
-        return !withoutFlag && withFlag;
+        // Stable 0.x counts as pre-release unconditionally: there is no flag left to opt in with.
+        return PackageVersionService.IsTargetPrereleaseVersion(version);
     }
 
     [Test, FsCheckProperty]
@@ -59,7 +57,6 @@ public class PrereleasePredicateProperties
         if (version.IsPrerelease || version.Major == 0)
             return true;
 
-        return !PackageVersionService.IsTargetPrereleaseVersion(version, includeZeroMajorVersions: false)
-            && !PackageVersionService.IsTargetPrereleaseVersion(version, includeZeroMajorVersions: true);
+        return !PackageVersionService.IsTargetPrereleaseVersion(version);
     }
 }

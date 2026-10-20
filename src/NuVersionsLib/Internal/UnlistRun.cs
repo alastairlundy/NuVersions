@@ -120,13 +120,12 @@ internal static class UnlistRun
     }
 
     /// <summary>
-    /// Runs the unlist flow for every prerelease version of a package (optionally including stable
-    /// zero-major versions), dispatching each to-unlist version through <paramref name="dispatchUnlist"/>.
+    /// Runs the unlist flow for every prerelease version of a package (stable versions with Major == 0
+    /// included), dispatching each to-unlist version through <paramref name="dispatchUnlist"/>.
     /// </summary>
     /// <param name="nugetApiUrl">The URL of the NuGet API endpoint serving the package.</param>
     /// <param name="nugetApiKey">The API key for authenticating with the NuGet service.</param>
     /// <param name="packageId">The identifier of the package to unlist versions for.</param>
-    /// <param name="includeZeroMajorVersions">When true, stable versions with Major == 0 are also unlisted alongside prerelease versions.</param>
     /// <param name="dispatchUnlist">The transport flow that unlists a single version and reports its outcome.</param>
     /// <param name="packageVersionService">Service used to enumerate and check package versions.</param>
     /// <param name="packageAvailabilityDetector">Detector used to verify the package exists on the server.</param>
@@ -136,14 +135,13 @@ internal static class UnlistRun
         string nugetApiUrl,
         string nugetApiKey,
         string packageId,
-        bool includeZeroMajorVersions,
         Func<string, string, NuGetVersion, string, CancellationToken, ValueTask<PackageVersionOutcome>> dispatchUnlist,
         IPackageVersionService packageVersionService,
         IPackageAvailabilityDetector packageAvailabilityDetector,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         NuGetVersion[] versionsToUnlist = await packageVersionService.GetPrereleasePackageVersionsAsync
-            (nugetApiUrl, nugetApiKey, packageId, includeZeroMajorVersions, cancellationToken).ConfigureAwait(false);
+            (nugetApiUrl, nugetApiKey, packageId, cancellationToken).ConfigureAwait(false);
 
         IAsyncEnumerable<PackageVersionOutcome> results = ExecuteAsync(nugetApiUrl, nugetApiKey, packageId,
             versionsToUnlist, dispatchUnlist, packageVersionService, packageAvailabilityDetector, cancellationToken);

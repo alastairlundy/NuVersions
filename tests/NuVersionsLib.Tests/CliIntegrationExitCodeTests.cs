@@ -389,12 +389,12 @@ internal sealed class InterruptedVersionService : IPackageVersionService
         => throw new OperationCanceledException("Simulated Ctrl-C during the listing read.");
 
     public Task<NuGetVersion[]> GetPrereleasePackageVersionsAsync(string nugetApiUrl, string nugetApiKey,
-        string packageId, bool includeZeroMajorVersions = false,
+        string packageId,
         CancellationToken cancellationToken = default)
         => throw new NotSupportedException("InterruptedVersionService only scripts the listing read.");
 
     public IAsyncEnumerable<NuGetVersion> EnumeratePrereleasePackageVersionsAsync(string nugetApiUrl,
-        string nugetApiKey, string packageId, bool includeZeroMajorVersions = false,
+        string nugetApiKey, string packageId,
         CancellationToken cancellationToken = default)
         => throw new NotSupportedException("InterruptedVersionService only scripts the listing read.");
 

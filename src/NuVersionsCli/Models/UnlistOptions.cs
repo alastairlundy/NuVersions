@@ -55,8 +55,6 @@ public sealed record UnlistOptions
 
     public bool NonInteractive { get; init; }
 
-    public bool IncludeZeroMajor { get; init; }
-
     public bool UseStrictParsing { get; init; } = true;
 
     public bool UnlistAllVersions { get; init; }
@@ -88,7 +86,6 @@ public sealed record UnlistOptions
         string? serverUrlGeneric,
         string? backend,
         bool nonInteractive,
-        bool includeZeroMajor,
         bool useStrictParsing,
         bool unlistAllVersions,
         bool dryRun,
@@ -121,7 +118,6 @@ public sealed record UnlistOptions
             ServerUrl = ConfigurationValueHelpers.ResolveServerUrl(serverUrlOption, serverUrlPrefixed, serverUrlGeneric),
             Backend = string.IsNullOrWhiteSpace(backend) ? DefaultBackend : backend,
             NonInteractive = nonInteractive,
-            IncludeZeroMajor = includeZeroMajor,
             UseStrictParsing = useStrictParsing,
             UnlistAllVersions = unlistAllVersions,
             DryRun = dryRun,

@@ -24,30 +24,30 @@ namespace NuVersionsLib.Abstractions;
 public interface IPackageVersionService
 {
     /// <summary>
-    /// Enumerates prerelease package versions from a NuGet repository.
+    /// Enumerates prerelease package versions from a NuGet repository. A stable version with
+    /// Major == 0 counts as prerelease for this purpose (see
+    /// <c>PackageVersionService.IsTargetPrereleaseVersion</c>).
     /// </summary>
     /// <param name="nugetApiUrl">The URL of the NuGet API.</param>
     /// <param name="nugetApiKey">The API key for authentication against the NuGet API.</param>
     /// <param name="packageId">The identifier of the package to retrieve versions for.</param>
-    /// <param name="includeZeroMajorVersions">When true, stable versions with Major == 0 are included alongside prerelease versions.</param>
     /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
-    /// <returns>An asynchronous sequence of prerelease <see cref="NuGetVersion"/> objects matching the specified criteria.</returns>
+    /// <returns>An asynchronous sequence of prerelease <see cref="NuGetVersion"/> objects.</returns>
     IAsyncEnumerable<NuGetVersion> EnumeratePrereleasePackageVersionsAsync(string nugetApiUrl, string nugetApiKey,
         string packageId,
-        bool includeZeroMajorVersions = false,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Retrieves an array of prerelease package versions from a NuGet repository.
+    /// Retrieves an array of prerelease package versions from a NuGet repository. A stable version with
+    /// Major == 0 counts as prerelease for this purpose (see
+    /// <c>PackageVersionService.IsTargetPrereleaseVersion</c>).
     /// </summary>
     /// <param name="nugetApiUrl">The URL of the NuGet API.</param>
     /// <param name="nugetApiKey">The API key for authentication against the NuGet API.</param>
     /// <param name="packageId">The identifier of the package to retrieve versions for.</param>
-    /// <param name="includeZeroMajorVersions">When true, stable versions with Major == 0 are included alongside prerelease versions.</param>
     /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
-    /// <returns>An array of prerelease <see cref="NuGetVersion"/> objects matching the specified criteria.</returns>
+    /// <returns>An array of prerelease <see cref="NuGetVersion"/> objects.</returns>
     Task<NuGetVersion[]> GetPrereleasePackageVersionsAsync(string nugetApiUrl, string nugetApiKey, string packageId,
-        bool includeZeroMajorVersions = false,
         CancellationToken cancellationToken = default);
 
     /// <summary>

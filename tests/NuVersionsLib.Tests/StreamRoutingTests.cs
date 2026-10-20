@@ -192,12 +192,12 @@ internal sealed class ScriptedVersionService(
         => Task.FromResult(listingInfo);
 
     public Task<NuGetVersion[]> GetPrereleasePackageVersionsAsync(string nugetApiUrl, string nugetApiKey,
-        string packageId, bool includeZeroMajorVersions = false,
+        string packageId,
         CancellationToken cancellationToken = default)
         => Task.FromResult(Array.Empty<NuGetVersion>());
 
     public IAsyncEnumerable<NuGetVersion> EnumeratePrereleasePackageVersionsAsync(string nugetApiUrl,
-        string nugetApiKey, string packageId, bool includeZeroMajorVersions = false,
+        string nugetApiKey, string packageId,
         CancellationToken cancellationToken = default)
         => throw new NotSupportedException("ScriptedVersionService does not script enumeration.");
 
@@ -221,7 +221,7 @@ internal sealed class ScriptedVersionService(
 internal sealed class UnusedUnlistService : IPackageUnlistService
 {
     public IAsyncEnumerable<PackageVersionOutcome> RequestPackageUnlistingAsync(string nugetApiUrl,
-        string nugetApiKey, string packageName, bool includeZeroMajorVersions = false,
+        string nugetApiKey, string packageName,
         CancellationToken cancellationToken = default)
         => throw new InvalidOperationException("A dry run must not dispatch unlisting requests.");
 
