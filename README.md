@@ -1,4 +1,4 @@
-# NuVersions
+# NuVersions (formerly PreReleaseDelist)
 
 A CLI to show how a NuGet package's versions are listed on a NuGet server, and to unlist versions of the package.
 
@@ -21,10 +21,7 @@ A CLI to show how a NuGet package's versions are listed on a NuGet server, and t
 - Machine-readable stdout with `--output json`, plus a small documented exit-code contract for CI.
 - Configure NuGet API Key and Server URL via environment variables.
 
-> **Renamed from PrereleaseDelist:** the `prerelease-delist` tool is now `nuversions`, with
-> today's unlist behaviour available as `nuversions unlist`. The environment variable prefix is
-> now `NUVERSIONS_`, the old `NUGET_*` generic fallbacks are unchanged, and `show` is the first
-> sibling command. See the `0.3.0` entry in the [changelog](CHANGELOG.md).
+> **Renamed from PrereleaseDelist:** the `prerelease-delist` tool is now `nuversions`, with today's unlist behaviour available as `nuversions unlist`. The environment variable prefix is now `NUVERSIONS_`, the old `NUGET_*` generic fallbacks are unchanged, and `show` is the first sibling command. See the `0.3.0` entry in the [changelog](CHANGELOG.md).
 
 ## Installation
 
@@ -68,20 +65,10 @@ dotnet build -c Release
 NuVersions is **not trimming-safe or Native AOT compatible**, due to its use of
 [NuGet.Protocol](https://learn.microsoft.com/en-us/nuget/reference/nuget-client-sdk):
 
-- NuGet.Protocol marks several code paths this tool exercises (V3 service index parsing,
-  repository signature resources, plugin serialization) with
-  `[RequiresUnreferencedCode]`, because they deserialize JSON via the reflection-based
-  Newtonsoft.Json library. The reflection makes the code paths unverifiable for the trimmer
-  and the Native AOT compiler, so trimmed or AOT-published builds surface
-  IL2026/IL2104/IL3053 warnings and may fail at runtime.
-- NuVersions' own code avoids reflection-based serialization (the `--output json` NDJSON
-  output uses System.Text.Json source generation), so nothing on the tool's side contributes
-  to these warnings.
+- NuGet.Protocol marks several code paths this tool exercises (V3 service index parsing, repository signature resources, plugin serialization) with `[RequiresUnreferencedCode]`, because they deserialize JSON via the reflection-based Newtonsoft.Json library. The reflection makes the code paths unverifiable for the trimmer and the Native AOT compiler, so trimmed or AOT-published builds surface IL2026/IL2104/IL3053 warnings and may fail at runtime.
+- NuVersions' own code avoids reflection-based serialization (the `--output json` NDJSON (Newline delimited JSON) output uses System.Text.Json source generation), so nothing on the tool's side contributes to these warnings.
 
-Both distribution channels avoid the problem by design: the `dotnet tool` package is
-framework-dependent (never trimmed), and the standalone GitHub Release binaries are
-self-contained, untrimmed JIT builds. This may be revisited if a future NuGet.Protocol
-release removes the Newtonsoft.Json dependency.
+Both distribution channels avoid the problem by design: the `dotnet tool` package is framework-dependent (never trimmed), and the standalone GitHub Release binaries are self-contained, untrimmed JIT builds. This may be revisited if a future NuGet.Protocol release removes the Newtonsoft.Json dependency.
 
 ## Usage
 
@@ -165,10 +152,7 @@ Every `unlist` run resolves each requested version to exactly one member of a cl
 > `prerelease-delist` name; the same two states are `unlisted`/`already-unlisted` now, matching
 > nuget.org's terminology. The all-pre-release option is now `--unlist-all` (was `--delist-all`).
 
-A version the server has never heard of, a typo or a version that was never published, is
-reported as a failure (`not-on-server`), not as "already unlisted". Versions that do need
-unlisting are still processed, so one bad entry in a batch does not prevent the rest from being
-unlisted.
+A version the server has never heard of, a typo or a version that was never published, is reported as a failure (`not-on-server`), not as "already unlisted". Versions that do need unlisting are still processed, so one bad entry in a batch does not prevent the rest from being unlisted.
 
 ### Dry runs
 
@@ -331,11 +315,7 @@ NuGet.org's NuGet server implementation has an API rate limit for unlisting pack
 
 Third party NuGet servers may have their own rate limits. Please check your NuGet server's documentation for more information.
 
-When the server rate-limits the run, this CLI **fails fast**: it stops sending further delete
-requests, reports the results collected so far (versions not yet attempted are reported as
-`not-attempted`), and exits with code `3`. It does not retry and does not wait for the rate-limit
-window to reset. Rerun once the window has elapsed. Rate-limit detection is authoritative by HTTP
-status code on the `http` backend and best-effort on the `sdk` backend.
+When the server rate-limits the run, this CLI **fails fast**: it stops sending further delete requests, reports the results collected so far (versions not yet attempted are reported as `not-attempted`), and exits with code `3`. It does not retry and does not wait for the rate-limit window to reset. Rerun once the window has elapsed. Rate-limit detection is authoritative by HTTP status code on the `http` backend and best-effort on the `sdk` backend.
 
 ## License
 
