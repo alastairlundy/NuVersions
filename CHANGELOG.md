@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## 0.3.0 - Unreleased
+## 0.3.0 - 20206-10-20
 
 ### Added
 
@@ -17,7 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - The project is renamed: the project name `PreReleaseDelist` becomes `NuVersions`, the NuGet id
   `PreReleaseDelist` becomes `NuVersions`, and the `prerelease-delist` command becomes
-  `nuversions`. The single command is now a hierarchy: `nuversions unlist` (today's delist
+  `nuversions`. The single command is now a hierarchy: `nuversions unlist` (prior delist
   behavior) and `nuversions show`. The old package id will be deprecated on NuGet.org pointing
   at the new one.
 - The unlist status vocabulary now matches nuget.org's own wording: the outcome formerly rendered
