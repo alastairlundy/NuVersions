@@ -39,9 +39,9 @@ internal static class NdjsonHelpers
     /// <param name="status">The already-rendered status member.</param>
     internal static string ToPackageVersionLine(string packageId, NuGetVersion version, string status)
     {
-        string package = JsonSerializer.Serialize(packageId);
-        string normalizedVersion = JsonSerializer.Serialize(version.ToNormalizedString());
-        string statusText = JsonSerializer.Serialize(status);
+        string package = JsonSerializer.Serialize(packageId, NdjsonJsonContext.Default.String);
+        string normalizedVersion = JsonSerializer.Serialize(version.ToNormalizedString(), NdjsonJsonContext.Default.String);
+        string statusText = JsonSerializer.Serialize(status, NdjsonJsonContext.Default.String);
 
         return $"{{\"package\":{package},\"version\":{normalizedVersion},\"status\":{statusText}}}";
     }
