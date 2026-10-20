@@ -26,7 +26,7 @@ namespace NuVersionsCli.Helpers;
 /// metadata.
 /// </summary>
 [JsonSourceGenerationOptions(GenerationMode = JsonSourceGenerationMode.Serialization)]
-[JsonSerializable(typeof(String))]
+[JsonSerializable(typeof(string))]
 internal sealed partial class NdjsonJsonContext : JsonSerializerContext
 {
 }
