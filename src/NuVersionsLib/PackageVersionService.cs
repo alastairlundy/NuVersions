@@ -17,7 +17,6 @@
  */
 
 using NuGet.Packaging.Core;
-using NuVersionsLib.Detectors.Abstractions;
 
 namespace NuVersionsLib;
 
@@ -296,7 +295,7 @@ public class PackageVersionService : IPackageVersionService
         List<(NuGetVersion Version, bool IsListed)> metadata =
         [
             .. results
-                .Select(r => (r.Identity.Version, r.IsListed))
+                .Select(r => (r.Identity.Version, r.IsListed)),
         ];
 
         return metadata;

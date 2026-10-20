@@ -80,7 +80,7 @@ public class PackageUnlistServiceTests
         // further dispatch would reach the handler unscripted and be recorded as such.
         FakeScriptedHttpTransportHandler handler = new();
         handler.ScriptStatusCode(PublishPath(first), (HttpStatusCode)429);
-        PackageUnlistService service =
+        HttpPackageUnlistService service =
             CreateHttpService(listingInfo, packageExists: true, new FakeHttpClientFactory(handler));
 
         List<PackageVersionOutcome> outcomes =
@@ -119,7 +119,7 @@ public class PackageUnlistServiceTests
 
         // No responses scripted: any dispatch would reach the handler unscripted and be recorded.
         FakeScriptedHttpTransportHandler handler = new();
-        PackageUnlistService service =
+        HttpPackageUnlistService service =
             CreateHttpService(listingInfo, packageExists: true, new FakeHttpClientFactory(handler));
 
         List<PackageVersionOutcome> outcomes =
@@ -161,7 +161,7 @@ public class PackageUnlistServiceTests
         FakeScriptedHttpTransportHandler handler = new();
         handler.ScriptStatusCode(PublishPath(firstListed), HttpStatusCode.OK);
         handler.ScriptStatusCode(PublishPath(secondListed), HttpStatusCode.OK);
-        PackageUnlistService service =
+        HttpPackageUnlistService service =
             CreateHttpService(listingInfo, packageExists: true, new FakeHttpClientFactory(handler));
 
         List<PackageVersionOutcome> outcomes = await CollectAsync(service, server.ServiceIndexUrl,
@@ -193,7 +193,7 @@ public class PackageUnlistServiceTests
         };
 
         FakeScriptedHttpTransportHandler handler = new();
-        PackageUnlistService service =
+        HttpPackageUnlistService service =
             CreateHttpService(listingInfo, packageExists: false, new FakeHttpClientFactory(handler));
 
         List<PackageVersionOutcome> outcomes = [];
@@ -444,7 +444,7 @@ public class PackageUnlistServiceTests
     private static string PublishPath(NuGetVersion version)
         => $"/publish/{PackageId}/{version.ToNormalizedString()}";
 
-    private static PackageUnlistService CreateHttpService(
+    private static HttpPackageUnlistService CreateHttpService(
         IDictionary<NuGetVersion, PackageVersionListingInfo> listingInfo, bool packageExists,
         IHttpClientFactory clientFactory)
         => new(new ScriptedVersionService(listingInfo),
@@ -477,7 +477,7 @@ public class PackageUnlistServiceTests
         CancellationToken cancellationToken = default)
     {
         NuGetVersion version = V("1.0.0");
-        PackageUnlistService service = CreateHttpService(
+        HttpPackageUnlistService service = CreateHttpService(
             new Dictionary<NuGetVersion, PackageVersionListingInfo> { [version] = Listed(version) },
             packageExists: true, new FakeHttpClientFactory(handler));
 

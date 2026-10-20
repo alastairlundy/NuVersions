@@ -31,7 +31,7 @@ Cli.Ext.ConfigureServices(services =>
         // invoker), and both in-box backends detect 429 themselves, so the fail-fast state
         // machine lives inside the services.
         .AddKeyedSingleton<IPackageUnlistService>("http", static (serviceProvider, _) =>
-            new PackageUnlistService(
+            new HttpPackageUnlistService(
                 serviceProvider.GetRequiredService<IPackageVersionService>(),
                 serviceProvider.GetRequiredService<IPackageAvailabilityDetector>(),
                 serviceProvider.GetRequiredService<IHttpClientFactory>()))

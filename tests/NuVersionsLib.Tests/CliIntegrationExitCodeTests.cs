@@ -354,7 +354,7 @@ public class CliIntegrationExitCodeTests
         services.AddSingleton<IPackageAvailabilityDetector, PackageAvailabilityDetector>();
         services.AddSingleton<IPackageVersionService, InterruptedVersionService>();
         services.AddKeyedSingleton<IPackageUnlistService>("http", static (provider, _) =>
-            new PackageUnlistService(
+            new HttpPackageUnlistService(
                 new InterruptedVersionService(),
                 provider.GetRequiredService<IPackageAvailabilityDetector>(),
                 new FakeHttpClientFactory(new FakeScriptedHttpTransportHandler())));

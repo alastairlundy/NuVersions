@@ -16,7 +16,6 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-using NuVersionsLib.Detectors.Abstractions;
 using NuVersionsLib.Internal;
 
 namespace NuVersionsLib;
@@ -38,7 +37,7 @@ namespace NuVersionsLib;
 /// interpreted and stays a <see cref="PackageVersionStatus.Failed"/> outcome.
 /// </para>
 /// </remarks>
-public class PackageUnlistService : IPackageUnlistService
+public class HttpPackageUnlistService : IPackageUnlistService
 {
     private const string NugetApiKeyHeaderName = "X-NuGet-ApiKey";
 
@@ -52,7 +51,7 @@ public class PackageUnlistService : IPackageUnlistService
     /// <param name="packageVersionService">Service used to enumerate and check package versions.</param>
     /// <param name="packageAvailabilityDetector">Detector used to verify the package exists on the server.</param>
     /// <param name="clientFactory">Factory used to create the <see cref="HttpClient"/> that sends each unlist request.</param>
-    public PackageUnlistService(IPackageVersionService packageVersionService,
+    public HttpPackageUnlistService(IPackageVersionService packageVersionService,
         IPackageAvailabilityDetector packageAvailabilityDetector,
         IHttpClientFactory clientFactory)
     {

@@ -16,12 +16,21 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-using NuVersionsLib.Detectors.Abstractions;
-
 namespace NuVersionsLib.Detectors;
 
+/// <summary>
+///
+/// </summary>
 public class PackageAvailabilityDetector : IPackageAvailabilityDetector
 {
+    /// <summary>
+    ///
+    /// </summary>
+    /// <param name="nugetApiUrl"></param>
+    /// <param name="packageId"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    /// <exception cref="InvalidOperationException"></exception>
     public async Task<bool> CheckPackageExistsAsync(string nugetApiUrl, string packageId, CancellationToken cancellationToken)
     {
         SourceRepository repository = Repository.Factory.GetCoreV3(nugetApiUrl);
