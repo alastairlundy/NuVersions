@@ -18,7 +18,7 @@
 
 using System.Text.Json.Serialization;
 
-namespace NuVersionsLib.Models;
+namespace NuVersionsLib.Helpers.Models;
 
 internal class PackageSearchResults
 {
@@ -29,7 +29,7 @@ internal class PackageSearchResults
     internal string[] Problems { get; set; } = [];
 
     [JsonPropertyName("searchResults")]
-    internal PackageSearchResult SearchResults { get; set; }
+    internal PackageSearchResult? SearchResults { get; set; }
 
 
 }

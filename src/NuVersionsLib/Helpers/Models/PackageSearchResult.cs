@@ -18,13 +18,13 @@
 
 using System.Text.Json.Serialization;
 
-namespace NuVersionsLib.Models;
+namespace NuVersionsLib.Helpers.Models;
 
 internal class PackageSearchResult
 {
     [JsonPropertyName("sourceName")]
-    internal string SourceName { get; set; }
+    internal string SourceName { get; set; } = string.Empty;
 
     [JsonPropertyName("packages")]
-    internal PackageSearchResultResponse[] Packages { get; set; }
+    internal PackageSearchResultResponse[] Packages { get; set; } = [];
 }

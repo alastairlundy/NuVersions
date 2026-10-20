@@ -17,10 +17,11 @@
  */
 
 using System.Text.Json.Serialization;
+using NuVersionsLib.Helpers.Models;
 
 namespace NuVersionsLib.Helpers;
 
-[JsonSourceGenerationOptions(GenerationMode = JsonSourceGenerationMode.Serialization)]
+[JsonSourceGenerationOptions(GenerationMode = JsonSourceGenerationMode.Metadata | JsonSourceGenerationMode.Serialization)]
 [JsonSerializable(typeof(PackageSearchResults))]
 internal partial class NetSdkPackageSearchJsonContext : JsonSerializerContext
 {

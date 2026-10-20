@@ -18,15 +18,15 @@
 
 using System.Text.Json.Serialization;
 
-namespace NuVersionsLib.Models;
+namespace NuVersionsLib.Helpers.Models;
 
 internal class PackageSearchResultResponse
 {
     [JsonPropertyName("id")]
-    internal string Id { get; set; }
+    internal string Id { get; set; } = string.Empty;
 
     [JsonPropertyName("latestVersion")]
-    internal NuGetVersion LatestVersion { get; set; }
+    internal string? LatestVersion { get; set; }
 
     [JsonPropertyName("downloads")]
     internal int Downloads { get; set; }

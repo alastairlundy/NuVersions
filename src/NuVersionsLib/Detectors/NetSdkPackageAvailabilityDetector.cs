@@ -19,6 +19,7 @@
 using System.Text.Json;
 using CliInvoke.Core;
 using NuVersionsLib.Helpers;
+using NuVersionsLib.Helpers.Models;
 
 namespace NuVersionsLib.Detectors;
 
@@ -56,10 +57,10 @@ public class NetSdkPackageAvailabilityDetector : IPackageAvailabilityDetector
             BufferedProcessResult result = await _processInvoker.ExecuteBufferedAsync(configuration,
                 cancellationToken: cancellationToken).ConfigureAwait(false);
 
-            PackageSearchResults? sdkSearchResults =
-                JsonSerializer.Deserialize<PackageSearchResults>(result.StandardOutput, NetSdkPackageSearchJsonContext.Default.Options);
+            PackageSearchResults? sdkSearchResults = JsonSerializer.Deserialize(result.StandardOutput,
+                NetSdkPackageSearchJsonContext.Default.PackageSearchResults);
 
-            if (sdkSearchResults is null || sdkSearchResults.SearchResults.Packages.Length == 0)
+            if (sdkSearchResults?.SearchResults is null || sdkSearchResults.SearchResults.Packages.Length == 0)
                 return false;
 
             return sdkSearchResults.SearchResults.Packages.Any(p
