@@ -23,13 +23,13 @@ using NuVersionsLib.Internal;
 namespace NuVersionsLib;
 
 /// <summary>
-/// This class is an alternative implementation for the <see cref="PackageUnlistService"/> that uses .NET SDK CLI's nuget subcommand.
+/// This class is an alternative implementation for the <see cref="HttpPackageUnlistService"/> that uses .NET SDK CLI's nuget subcommand.
 /// </summary>
 /// <remarks>
 /// <para>
 /// This backend passes the API key on the process command line, which is visible in process listings.
 /// This is inherent to the <c>dotnet nuget delete</c> command and cannot be avoided.
-/// Consider using the HTTP-based <see cref="PackageUnlistService"/> where possible for improved security.
+/// Consider using the HTTP-based <see cref="HttpPackageUnlistService"/> where possible for improved security.
 /// </para>
 /// <para>
 /// Per-version unlist requests are dispatched through this class's own inlined <c>dotnet nuget delete</c>
