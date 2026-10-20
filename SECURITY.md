@@ -1,5 +1,5 @@
 # Security Policy
-This information is provided on an informational basis with forward looking statements and information, and is not a guarantee of future support.
+This information is provided on an informational basis with forward-looking statements, and is not a guarantee of future support.
 
 ### Currently Supported Versions
 Versions that are currently supported with Bug Fixes and/or Security Fixes.
@@ -15,6 +15,6 @@ Please ensure you provide all the details regarding the vulnerability. I will tr
 
 I will then investigate the issue further and decide whether or not to accept the vulnerability. I will then inform you whether I accept the vulnerability or not.
 
-If the vulnerability is accepted please do not publish the details of the vulnerability until at least 2-3 Business Days after the updates patching the security vulnerability have been released .
+If the vulnerability is accepted please do not publish the details of the vulnerability until at least 2-3 Business Days after the updates patching the security vulnerability have been released.
 
 If the vulnerability is rejected please do not refer to it as a vulnerability and do not publish private correspondence without prior written permission.

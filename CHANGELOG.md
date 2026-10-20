@@ -8,8 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
-- The `nuversions show` subcommand: a pure read that prints every version of a package — stable
-  and pre-release, listed and unlisted — with one `Status=listed|unlisted` line per version.
+- The `nuversions show` subcommand: a pure read that prints every version of a package, stable
+  and pre-release, listed and unlisted, with one `Status=listed|unlisted` line per version.
   It sends no delete request and needs no API key. With `--output json`, same one-object-per-line
   NDJSON schema as `unlist`; a missing package exits `2`.
 
