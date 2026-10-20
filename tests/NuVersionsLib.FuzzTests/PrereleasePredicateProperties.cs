@@ -32,7 +32,7 @@ public class PrereleasePredicateProperties
         if (!version.IsPrerelease)
             return true;
 
-        return PackageVersionService.IsTargetPrereleaseVersion(version, includeZeroMajorVersions: false);
+        return HttpPackageVersionService.IsTargetPrereleaseVersion(version, includeZeroMajorVersions: false);
     }
 
     [Test, FsCheckProperty]
@@ -44,8 +44,8 @@ public class PrereleasePredicateProperties
         if (version.IsPrerelease || version.Major != 0)
             return true;
 
-        bool withoutFlag = PackageVersionService.IsTargetPrereleaseVersion(version, includeZeroMajorVersions: false);
-        bool withFlag = PackageVersionService.IsTargetPrereleaseVersion(version, includeZeroMajorVersions: true);
+        bool withoutFlag = HttpPackageVersionService.IsTargetPrereleaseVersion(version, includeZeroMajorVersions: false);
+        bool withFlag = HttpPackageVersionService.IsTargetPrereleaseVersion(version, includeZeroMajorVersions: true);
 
         return !withoutFlag && withFlag;
     }
@@ -59,7 +59,7 @@ public class PrereleasePredicateProperties
         if (version.IsPrerelease || version.Major == 0)
             return true;
 
-        return !PackageVersionService.IsTargetPrereleaseVersion(version, includeZeroMajorVersions: false)
-            && !PackageVersionService.IsTargetPrereleaseVersion(version, includeZeroMajorVersions: true);
+        return !HttpPackageVersionService.IsTargetPrereleaseVersion(version, includeZeroMajorVersions: false)
+            && !HttpPackageVersionService.IsTargetPrereleaseVersion(version, includeZeroMajorVersions: true);
     }
 }

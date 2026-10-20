@@ -29,7 +29,7 @@ Cli.Ext.ConfigureServices(services =>
             new HttpPackageAvailabilityDetector())
         .AddKeyedSingleton<IPackageAvailabilityDetector>("sdk", static (serviceProvider, _) =>
             new NetSdkPackageAvailabilityDetector(serviceProvider.GetRequiredService<IProcessInvoker>()))
-        .AddSingleton<IPackageVersionService, PackageVersionService>()
+        .AddSingleton<IPackageVersionService, HttpPackageVersionService>()
         // Composing services keyed to the exact vocabulary the --backend option accepts; each
         // resolves its own transport collaborator (the HTTP client factory or the process
         // invoker), and both in-box backends detect 429 themselves, so the fail-fast state
@@ -56,5 +56,5 @@ return await Cli.RunAsync<RootCommand>(args, new CliSettings
 {
     EnableDefaultExceptionHandler = true,
     EnableSuggestDirective = true,
-    EnableEnvironmentVariablesDirective = true
+    EnableEnvironmentVariablesDirective = true,
 }).ConfigureAwait(true);

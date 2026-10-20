@@ -23,11 +23,11 @@ namespace NuVersionsLib;
 /// <summary>
 /// This class provides functionality to retrieve package versions from a NuGet repository.
 /// </summary>
-public class PackageVersionService : IPackageVersionService
+public class HttpPackageVersionService : IPackageVersionService
 {
     private readonly IPackageAvailabilityDetector _packageAvailabilityDetector;
 
-    public PackageVersionService(IPackageAvailabilityDetector packageAvailabilityDetector)
+    public HttpPackageVersionService(IPackageAvailabilityDetector packageAvailabilityDetector)
     {
         _packageAvailabilityDetector = packageAvailabilityDetector;
     }
