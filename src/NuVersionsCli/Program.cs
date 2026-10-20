@@ -24,7 +24,9 @@ using NuVersionsLib.Detectors.Abstractions;
 Cli.Ext.ConfigureServices(services =>
 {
     services.AddHttpClient()
-        .AddSingleton<IPackageAvailabilityDetector, PackageAvailabilityDetector>()
+        .AddCliInvoke(ServiceLifetime.Singleton)
+        .AddKeyedSingleton<IPackageAvailabilityDetector>("http",
+            new HttpPackageAvailabilityDetector())
         .AddSingleton<IPackageVersionService, PackageVersionService>()
         // Composing services keyed to the exact vocabulary the --backend option accepts; each
         // resolves its own transport collaborator (the HTTP client factory or the process
@@ -39,8 +41,7 @@ Cli.Ext.ConfigureServices(services =>
             new NetSdkPackageUnlistService(
                 serviceProvider.GetRequiredService<IPackageVersionService>(),
                 serviceProvider.GetRequiredService<IPackageAvailabilityDetector>(),
-                serviceProvider.GetRequiredService<IProcessInvoker>()))
-        .AddCliInvoke(ServiceLifetime.Singleton);
+                serviceProvider.GetRequiredService<IProcessInvoker>()));
 
     ConfigurationBuilder configurationBuilder = new();
     configurationBuilder.AddEnvironmentVariables(prefix: "NUVERSIONS_");

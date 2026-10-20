@@ -21,7 +21,7 @@ namespace NuVersionsLib.Detectors;
 /// <summary>
 ///
 /// </summary>
-public class PackageAvailabilityDetector : IPackageAvailabilityDetector
+public class HttpPackageAvailabilityDetector : IPackageAvailabilityDetector
 {
     /// <summary>
     ///

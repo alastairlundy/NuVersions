@@ -128,7 +128,7 @@ internal static class CliIntegrationHarness
     private static void ConfigureProductionServices(IServiceCollection services)
     {
         services.AddHttpClient()
-            .AddSingleton<IPackageAvailabilityDetector, PackageAvailabilityDetector>()
+            .AddSingleton<IPackageAvailabilityDetector, HttpPackageAvailabilityDetector>()
             .AddSingleton<IPackageVersionService, PackageVersionService>()
             .AddKeyedSingleton<IPackageUnlistService>("http", static (serviceProvider, _) =>
                 new HttpPackageUnlistService(
