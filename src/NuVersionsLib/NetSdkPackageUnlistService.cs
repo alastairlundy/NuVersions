@@ -18,7 +18,6 @@
 
 using System.Text.RegularExpressions;
 using CliInvoke.Core;
-using NuVersionsLib.Internal;
 
 namespace NuVersionsLib;
 
