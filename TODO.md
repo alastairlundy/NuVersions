@@ -29,9 +29,9 @@ NuGet.Protocol only authenticates read requests when the `PackageSource` carries
 `PackageSourceCredential`. `src/NuVersionsLib/Detectors/PackageAvailabilityDetector.cs:9`
 makes the same call independently and would have to move in lockstep.
 
-This is deliberate, not an oversight, and it is correct for nuget.org — see the
-non-goals below. But it leaves **private feeds that require authentication for reads
-unsupported**: Azure Artifacts, GitHub Packages, ProGet and Artifactory all sit behind
+This is deliberate, not an oversight, and it is correct for nuget.org. See the
+non-goals below. But it leaves **private feeds that require authentication for reads**
+unsupported: Azure Artifacts, GitHub Packages, ProGet and Artifactory all sit behind
 credentials on their metadata endpoints, and their rate limiters commonly key on the
 authenticated identity rather than on the IP address.
 
@@ -70,13 +70,13 @@ PackageSource source = new(nugetApiUrl)
 SourceRepository repo = Repository.Factory.GetCoreV3(source);
 ```
 
-`GetRepoInfo` in `PackageVersionService` is the single seam for the read path;
+`GetRepoInfo` in `PackageVersionService` is the only place the read path builds a source;
 `PackageAvailabilityDetector` duplicates the same call and needs the same treatment.
 
-Note the credential transport differs by feed family. `PackageSourceCredential` yields
+Note the credential transport differs by feed type. `PackageSourceCredential` yields
 Basic/NTLM. `X-NuGet-ApiKey` is a nuget.org `PackagePublish` mechanism that private feeds
 do not expect, and in NuGet.Protocol the only API-key path is `PackageUpdateResource`,
-which covers push and delete — not reads. The two mechanisms may have to coexist: the
+which covers push and delete, not reads. The two mechanisms may have to coexist: the
 HTTP unlist backend keeps `X-NuGet-ApiKey`, while a private-feed read would use Basic.
 
 ### Open decisions
@@ -85,7 +85,7 @@ HTTP unlist backend keeps `X-NuGet-ApiKey`, while a private-feed read would use 
    `--username`/`--password` pair, or add a credential-provider lookup? `dotnet restore`'s
    `nuget.config` credential support is the obvious precedent to follow.
 2. **Does `show` gain a credential option?** Today `show` deliberately sends no
-   credential — documented in the `ShowCommand` remarks — and that behaviour is pinned by
+   credential, documented in the `ShowCommand` remarks, and that behaviour is pinned by
    `tests/NuVersionsLib.Tests/CliShowCommandTests.cs` (`ShowSendsNoApiKey_AndNoDeleteRequest`).
    Private-feed support requires changing both the behaviour and the test.
 3. **Fallback order.** Anonymous first and retry with credentials on 401, or always send
@@ -97,7 +97,7 @@ HTTP unlist backend keeps `X-NuGet-ApiKey`, while a private-feed read would use 
 5. **Key optionality.** Every public method currently rejects an empty key with
    `ArgumentException.ThrowIfNullOrEmpty(nugetApiKey)`. Making the key optional for
    anonymous reads but required for authenticated ones changes the public
-   `IPackageVersionService` surface. The assembly is not published on NuGet, so the break
+   `IPackageVersionService` interface. The assembly is not published on NuGet, so the break
    is contained to this repository, but it is still a breaking change to a public interface.
 
 ### Risks and constraints
@@ -109,7 +109,7 @@ HTTP unlist backend keeps `X-NuGet-ApiKey`, while a private-feed read would use 
   round trips.
 - `Repository.Factory.GetCoreV3` wires no credential service, so a 401 cannot trigger an
   interactive prompt. That is the right behaviour for a CLI, but it means an
-  authentication failure surfaces as a feed-side failure (exit `1`) rather than a usage
+  authentication failure shows up as a feed-side failure (exit `1`) rather than a usage
   error (exit `2`). Decide whether that deserves its own message.
 - The existing contract that the credential never reaches stdout or stderr must survive
   this change.
@@ -146,7 +146,7 @@ becomes `not-attempted` (`PackageUnlistService.cs:180-182` and the fail-fast loo
 
 The gap is only in what the user is told. Possible improvements:
 
-- Read and surface the server's `Retry-After` hint on the 429, so the run can say when it
+- Read the server's `Retry-After` hint on the 429 and print it, so the run can say when it
   will be possible to continue.
-- Offer a resume affordance for the `not-attempted` versions, so a long run does not have
+- Offer a resume option for the `not-attempted` versions, so a long run does not have
   to be reconstructed by hand from the JSON output.
