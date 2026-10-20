@@ -27,6 +27,8 @@ Cli.Ext.ConfigureServices(services =>
         .AddCliInvoke(ServiceLifetime.Singleton)
         .AddKeyedSingleton<IPackageAvailabilityDetector>("http",
             new HttpPackageAvailabilityDetector())
+        .AddKeyedSingleton<IPackageAvailabilityDetector>("sdk", static (serviceProvider, _) =>
+            new NetSdkPackageAvailabilityDetector(serviceProvider.GetRequiredService<IProcessInvoker>()))
         .AddSingleton<IPackageVersionService, PackageVersionService>()
         // Composing services keyed to the exact vocabulary the --backend option accepts; each
         // resolves its own transport collaborator (the HTTP client factory or the process
