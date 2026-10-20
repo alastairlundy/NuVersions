@@ -46,7 +46,9 @@
 - The `prerelease-delist` command name and the `PreReleaseDelist` package id.</PackageReleaseNotes>
         <TargetFramework>net10.0</TargetFramework>
         <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
-        <EnableAoTAnalyzer>true</EnableAoTAnalyzer>
+        <EnableAotAnalyzer>true</EnableAotAnalyzer>
+        <IsAotCompatible>false</IsAotCompatible>
+        <IsTrimmable>false</IsTrimmable>
         <Version>0.3.0</Version>
         <PackageVersion>0.3.0</PackageVersion>
         <AssemblyVersion>0.3.0.0</AssemblyVersion>

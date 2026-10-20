@@ -112,6 +112,16 @@ because env fallbacks are read at construction.
   `src/` and `tests/` `Directory.Packages.props` — the nearest props file wins per project,
   so removing one pin re-exposes the audited version at build of that tree only.
 - The CPM + audit pin combo means a NuGet.Protocol bump should re-check that pin.
+- NuGet.Protocol is **not trimming or Native AOT safe**: several of its code paths the CLI
+  exercises (service index parsing, repository signature resources, plugin serialization) are
+  marked `[RequiresUnreferencedCode]`, and it transitively pulls in Newtonsoft.Json, which
+  itself produces IL2104/IL3053 warnings. NuVersions does not reference Newtonsoft.Json
+  directly. A Native AOT publish of the CLI succeeds with ILC warnings from those
+  assemblies; none come from NuVersions' own code, which is trim/AOT clean (the NDJSON
+  serializer uses `NdjsonJsonContext` source generation). This only matters for a
+  self-contained trimmed or native-AOT distribution — the tool ships as a framework-dependent
+  dotnet tool, which does not trim. Revisit when NuGet's packages drop the Newtonsoft.Json
+  dependency; do not try to fix these warnings in-repo.
 
 ## Conventions
 

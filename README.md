@@ -63,6 +63,26 @@ Self-contained, single-file binaries are attached to each GitHub Release for exa
 dotnet build -c Release
 ```
 
+### Trim and Native AOT compatibility
+
+NuVersions is **not trimming-safe or Native AOT compatible**, due to its use of
+[NuGet.Protocol](https://learn.microsoft.com/en-us/nuget/reference/nuget-client-sdk):
+
+- NuGet.Protocol marks several code paths this tool exercises (V3 service index parsing,
+  repository signature resources, plugin serialization) with
+  `[RequiresUnreferencedCode]`, because they deserialize JSON via the reflection-based
+  Newtonsoft.Json library. The reflection makes the code paths unverifiable for the trimmer
+  and the Native AOT compiler, so trimmed or AOT-published builds surface
+  IL2026/IL2104/IL3053 warnings and may fail at runtime.
+- NuVersions' own code avoids reflection-based serialization (the `--output json` NDJSON
+  output uses System.Text.Json source generation), so nothing on the tool's side contributes
+  to these warnings.
+
+Both distribution channels avoid the problem by design: the `dotnet tool` package is
+framework-dependent (never trimmed), and the standalone GitHub Release binaries are
+self-contained, untrimmed JIT builds. This may be revisited if a future NuGet.Protocol
+release removes the Newtonsoft.Json dependency.
+
 ## Usage
 
 The `nuversions` command has subcommands, one per operation.

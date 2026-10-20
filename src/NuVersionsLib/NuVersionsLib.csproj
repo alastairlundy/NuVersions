@@ -14,8 +14,10 @@
         <RepositoryType>git</RepositoryType>
         <PackageTags>unlist;nuget;dotnet-tool;cli</PackageTags>
         <Nullable>enable</Nullable>
-        <IsTrimmable>true</IsTrimmable>
-        <IsAoTCompatible>true</IsAoTCompatible>
+        <EnableAotAnalyzer>true</EnableAotAnalyzer>
+        <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+        <IsTrimmable>false</IsTrimmable>
+        <IsAotCompatible>false</IsAotCompatible>
     </PropertyGroup>
 
     <ItemGroup>
