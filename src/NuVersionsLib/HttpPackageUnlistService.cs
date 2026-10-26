@@ -25,10 +25,10 @@ namespace NuVersionsLib;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Per-version unlist requests are dispatched through this class's own inlined HTTP flow; the publish URL
-/// is resolved per call via the service index, so a single instance may serve multiple sources. Every
-/// shared run rule (argument validation, package-existence check, listed-state check, partition, bucket
-/// yields, fail-fast rate-limit loop) lives once in <see cref="UnlistRun"/>.
+/// The publish URL is resolved per call via the service index, so a single instance may serve
+/// multiple sources. Every shared run rule (argument validation, package-existence check,
+/// listed-state check, partition, bucket yields, fail-fast rate-limit loop) lives once in
+/// <see cref="UnlistRun"/>.
 /// </para>
 /// <para>
 /// A 404 is only reported as <see cref="PackageVersionStatus.AlreadyUnlisted"/> when the server's
