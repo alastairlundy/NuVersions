@@ -21,7 +21,7 @@ using NuGet.Packaging.Core;
 namespace NuVersionsLib;
 
 /// <summary>
-/// This class provides functionality to retrieve package versions from a NuGet repository.
+/// Retrieves package versions from a NuGet repository.
 /// </summary>
 public class PackageVersionService : IPackageVersionService
 {
@@ -74,8 +74,7 @@ public class PackageVersionService : IPackageVersionService
     }
 
     /// <summary>
-    /// Retrieves an array of prerelease package versions from a NuGet repository. Stable versions with
-    /// Major == 0 count as prerelease (see <see cref="IsTargetPrereleaseVersion"/>).
+    /// Retrieves an array of prerelease package versions from a NuGet repository.
     /// </summary>
     /// <param name="nugetApiUrl">The URL of the NuGet API.</param>
     /// <param name="nugetApiKey">The API key for authentication against the NuGet API.</param>
@@ -180,7 +179,7 @@ public class PackageVersionService : IPackageVersionService
     /// <param name="includePreReleaseVersions">Whether to include pre-release versions in the search results.</param>
     /// <param name="packageVersion">The specific version of the package to verify against.</param>
     /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
-    /// <returns>A boolean value indicating whether the specified package version is unlisted. Returns true if unlisted, false otherwise.</returns>
+    /// <returns>Whether the version is unlisted.</returns>
     public async Task<bool> IsPackageVersionUnlistedAsync(string nugetApiUrl, string nugetApiKey, string packageId,
         bool includePreReleaseVersions, NuGetVersion packageVersion, CancellationToken cancellationToken)
     {
