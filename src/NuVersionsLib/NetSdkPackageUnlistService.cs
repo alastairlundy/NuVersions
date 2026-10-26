@@ -23,7 +23,7 @@ using NuVersionsLib.Internal;
 namespace NuVersionsLib;
 
 /// <summary>
-/// This class is an alternative implementation for the <see cref="PackageUnlistService"/> that uses .NET SDK CLI's nuget subcommand.
+/// Unlists versions by running <c>dotnet nuget delete</c> for each request.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -32,8 +32,7 @@ namespace NuVersionsLib;
 /// Consider using the HTTP-based <see cref="PackageUnlistService"/> where possible for improved security.
 /// </para>
 /// <para>
-/// Per-version unlist requests are dispatched through this class's own inlined <c>dotnet nuget delete</c>
-/// flow. Every shared run rule (argument validation, package-existence check, listed-state check,
+/// Every shared run rule (argument validation, package-existence check, listed-state check,
 /// partition, bucket yields, fail-fast rate-limit loop) lives once in <see cref="UnlistRun"/>.
 /// </para>
 /// <para>
