@@ -150,3 +150,76 @@ The gap is only in what the user is told. Possible improvements:
   will be possible to continue.
 - Offer a resume option for the `not-attempted` versions, so a long run does not have
   to be reconstructed by hand from the JSON output.
+
+---
+
+## Deprecation visibility in `show`; a deprecation command stays out of scope
+
+**Status:** Deferred, not started.
+**Area:** `src/NuVersionsLib/PackageVersionService.cs`, `src/NuVersionsCli/ShowCommand.cs`,
+`src/NuVersionsLib/Internal/Localizations/Resources.resx`.
+
+### Motivation
+
+A maintainer unlisting a broken or vulnerable release also usually wants to deprecate the
+version, so consumers get the *reason* (`legacy`, `critical-bugs`, `other`), an alternate
+package, and a message via `dotnet list package --deprecated`. Deprecation cannot be set
+programmatically: unlike unlisting it has no documented endpoint in the NuGet Server API,
+NuGet.Protocol only reads deprecation metadata (verify: `PackageUpdateResource` in
+NuGet/NuGet.Client contains push/delete logic only, and `PackageDeprecationMetadata` exists
+only on the read side), and `dotnet nuget` has no
+deprecate verb (the command list: push, delete, locals, sources, verify, trust, sign, why).
+Deprecation is set only through the nuget.org website. A tool built on official APIs must
+not scrape that web endpoint.
+
+### Design sketch
+
+Do the supported half: read. NuGet.Protocol exposes `PackageDeprecationMetadata` (reasons,
+message, alternate package id/version) through `PackageSearchMetadata` and the registration
+metadata. `show` could fetch the deprecation state of the package and render it per version:
+
+- text mode: append a `Deprecation=<reason(s)>` column, or a suffix when deprecation exists so
+  undeprecated lines stay unchanged;
+- `--output json`: nullable `deprecation` object (`reasons`, `message`, `alternatePackage`)
+  in the NDJSON schema. Adding an optional field is breaking for schema consumers, so it
+  needs README contract-table and CHANGELOG treatment.
+
+Third-party feeds: deprecation metadata is read from the registration protocol; a feed that
+does not serve it renders as "no deprecation", indistinguishable from nuget.org's absent
+case at the metadata level.
+
+### Open decisions
+
+1. **Does the text line grow or keep its width?** The `Version=... Status=...` line is
+   pinned by tests; a wide-locked format (`-` for none) versus a conditional third field
+   changes the CLI render contract.
+2. **NDJSON schema stability.** `show` documents "exactly three fields, no additional
+   fields", README-pinned. This feature would knowingly break that sentence; bump the major
+   and document the new field, or gate behind a flag?
+3. **Scope of the read.** Deprecation is per version; `show` already enumerates all versions,
+   so the natural seam is the same loop. Verify whether `PackageSearchMetadata` (search
+   resource) carries per-version deprecation, or whether the per-version registration catalog
+   page is needed instead (more requests; respects nuget.org's IP-keyed read limits).
+
+### Risks and constraints
+
+- NuGet.Protocol's deprecation read is a Newtonsoft.Json reflection path
+  (`PackageSearchMetadata`). Confirm it does not add trim-surface warnings beyond what
+  NuGet.Protocol already contributes.
+- The status vocabulary in the README contract tables must not gain a deprecation word from
+  this feature: deprecation is metadata, not an outcome state.
+
+### Acceptance criteria
+
+- `show` reports existing deprecation reasons per version, for both text and JSON output.
+- No write path is added; the CLI contract for `unlist` is untouched.
+- README/GLOSSARY/exit-code tables updated in the same change, per AGENTS.md.
+
+### References
+
+- [Deprecating packages](https://learn.microsoft.com/en-us/nuget/nuget-org/deprecate-packages):
+  the website-only writer and the nuget.org-only contract.
+- [NuGet Client SDK](https://learn.microsoft.com/en-us/nuget/reference/nuget-client-sdk):
+  the read-side source of `PackageDeprecationMetadata`.
+- [dotnet nuget commands](https://learn.microsoft.com/en-us/nuget/reference/dotnet-commands):
+  no deprecate verb as of .NET 10.
