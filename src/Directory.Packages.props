@@ -15,13 +15,13 @@
     <PackageVersion Include="CliInvoke.Core" Version="3.1.0" />
     <PackageVersion Include="CliInvoke" Version="3.1.0" />
     <PackageVersion Include="DotMake.CommandLine" Version="3.7.0" />
-    <PackageVersion Include="Meziantou.Analyzer" Version="3.0.313" />
-    <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.13" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.13" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.13" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.13" />
+    <PackageVersion Include="Meziantou.Analyzer" Version="3.0.317" />
+    <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.14" />
     <PackageVersion Include="NuGet.Protocol" Version="7.9.0" />
     <PackageVersion Include="Polyfill" PrivateAssets="all" Version="11.4.5" />
-    <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="8.0.2" />
+    <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="10.0.14" />
   </ItemGroup>
 </Project>
