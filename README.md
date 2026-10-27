@@ -6,6 +6,7 @@ A CLI to show how a NuGet package's versions are listed on a NuGet server, and t
 [![NuGet downloads](https://img.shields.io/nuget/dt/NuVersions.svg)][nuget]
 [![GitHub license](https://img.shields.io/github/license/alastairlundy/NuVersions.svg)][license]
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/alastairlundy/NuVersions/badge)][scorecard]
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/15971/badge)](https://www.bestpractices.dev/projects/15971)
 
 [nuget]: https://www.nuget.org/packages/NuVersions/
 [license]: LICENSE
