@@ -38,7 +38,7 @@ internal sealed record DispatchedRequest(string Method, string RequestUri);
 /// mapping under test lives in the production services.
 /// </para>
 /// <para>
-/// The service index is deliberately not served here. <see cref="PackageUnlistService"/> resolves it
+/// The service index is deliberately not served here. <see cref="HttpPackageUnlistService"/> resolves it
 /// through NuGet.Protocol's own internal HTTP stack — not through the injected client factory — so
 /// <see cref="LoopbackServiceIndexServer"/> serves the real index document on loopback, and this
 /// handler scripts the publish-endpoint responses that arrive through the factory. A 404-interpretation

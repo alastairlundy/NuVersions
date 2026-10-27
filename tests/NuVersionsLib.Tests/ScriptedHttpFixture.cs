@@ -27,7 +27,7 @@ namespace NuVersionsLib.Tests;
 /// A loopback-only HTTP server that serves the NuGet v3 service index.
 /// </summary>
 /// <remarks>
-/// <see cref="PackageUnlistService"/> resolves the service index through NuGet.Protocol's own
+/// <see cref="HttpPackageUnlistService"/> resolves the service index through NuGet.Protocol's own
 /// internal HTTP stack — not through the injected client factory — so handler-stubbed tests need a
 /// real (but strictly local) listener for that one GET. Only loopback addresses are ever bound;
 /// no external network is touched. The publish-endpoint responses that follow arrive through

@@ -139,7 +139,7 @@ public class ShowCommand
     }
 
     /// <summary>
-    /// One line of the show output in the same shape the unlist command emits: a normalized
+    /// One line of the show output in the same shape the unlist command emits: a normalised
     /// version plus a kebab-case status member, rendered as NDJSON under <c>--output json</c>.
     /// </summary>
     private static string DescribeListing(string packageId, PackageVersionListingInfo info, bool json)

@@ -29,7 +29,7 @@ namespace NuVersionsLib;
 /// <para>
 /// This backend passes the API key on the process command line, which is visible in process listings.
 /// This is inherent to the <c>dotnet nuget delete</c> command and cannot be avoided.
-/// Consider using the HTTP-based <see cref="PackageUnlistService"/> where possible for improved security.
+/// Consider using the HTTP-based <see cref="HttpPackageUnlistService"/> where possible for improved security.
 /// </para>
 /// <para>
 /// Every shared run rule (argument validation, package-existence check, listed-state check,
