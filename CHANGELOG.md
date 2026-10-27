@@ -18,7 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   itself (semver reserves the whole `0.x` range for initial development), so there is no flag left
   to opt in — or out — of it.
 
-## 0.3.0 - 20206-10-20
+## 0.3.0 - 2026-10-20
 
 ### Added
 
