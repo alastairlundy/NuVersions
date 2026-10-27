@@ -26,6 +26,26 @@ The three buckets unlist planning partitions requested versions into:
 *to unlist* (exists and is listed), *already unlisted* (exists but
 unlisted), *not on server* (absent from the server's metadata).
 
+## Deprecation metadata
+
+The reasons, custom message, and alternate package a NuGet server records
+for one version of a package. The version stays listed or unlisted as it
+was; deprecation tells consumers the reason and the recommended
+replacement. On nuget.org it is set only through the NuGet Gallery
+website; no NuGet Server API endpoint, no NuGet.Protocol write path, and
+no `dotnet nuget` verb sets it.
+
+## Deprecation state
+
+The per-version verdict `show` reports from the server's deprecation
+metadata: *deprecated* when the server serves a deprecation object for
+the version, *not deprecated* when it serves none. Whether the object
+carries reasons does not change the verdict. The deprecation reasons
+themselves are reported verbatim from the server; `legacy` means the
+version is no longer maintained. In text output, a deprecated version
+with no reasons renders `Deprecation=unspecified`; `unspecified` is a
+NuVersions render token, not a server word.
+
 ## Unlist mechanism
 
 The transport-level single-version unlist inside each public unlisting

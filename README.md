@@ -302,7 +302,13 @@ nuversions unlist --package-id "MyPackage" --api-key "myApiKey" --output json "1
 
 ## Unlisting and deprecation
 
-Unlisting hides a version from search and from the nuget.org package details page. Existing consumers can still restore it, and unlisting tells them nothing by itself. Deprecation metadata is what surfaces warnings to `dotnet list package --deprecated` and IDE package managers. If you are unlisting a vulnerable or broken release, consider also deprecating the version (or a replacement) on nuget.org so consumers get the reason.
+Unlisting hides a version from search and from the nuget.org package details page. Existing consumers can still restore it, and unlisting tells them nothing by itself. Deprecation metadata is what surfaces warnings to `dotnet list package --deprecated` and IDE package managers.
+
+NuVersions has no deprecation command, deliberately: unlike unlisting, deprecation has no supported write surface. It is not in the [NuGet Server API](https://learn.microsoft.com/en-us/nuget/api/overview), NuGet.Protocol can only read deprecation metadata (not set it), and the `dotnet nuget` CLI has no deprecate verb. Deprecation can currently only be set manually on the [nuget.org website](https://learn.microsoft.com/en-us/nuget/nuget-org/deprecate-packages). If you are unlisting a vulnerable or broken release, deprecate the version there so consumers get the reason, then use NuVersions to unlist it programmatically.
+
+## Out of scope
+
+`show` reports listing state and deprecation only. It does not report vulnerability advisories, even though the registration metadata serves them beside deprecation metadata: advisories are open-ended data (GitHub Advisory IDs and aliases, unbounded per version) that cannot fit the closed status words, the fixed NDJSON field set, or the text-line format, and the maintainer considering an unlist of a vulnerable release typically already knows the advisories. See [ADR 0001](docs/adr/0001-no-advisory-reporting.md) for the recorded trade-off.
 
 ## Rate limits
 
