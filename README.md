@@ -14,7 +14,7 @@ A CLI to show how a NuGet package's versions are listed on a NuGet server, and t
 
 ## Features
 
-- Show every version of a NuGet package together with whether each one is listed or unlisted (`show`).
+- Show every version of a NuGet package together with whether each one is listed or unlisted, and whether it is deprecated and why (`show`).
 - Unlist specific versions of a NuGet package by name, pre-release and stable versions alike (`unlist`).
 - Unlist all pre-release versions of a package in one go (`unlist --unlist-all`).
 - Distinguishes a version that is already unlisted from a version the server has never heard of, so a mistyped version string is reported as a failure rather than a silent success.
@@ -81,7 +81,7 @@ nuversions [subcommand] [options]
 
 | Subcommand | Reads or writes | What it does                                                                               |
 |------------|-----------------|--------------------------------------------------------------------------------------------|
-| `show`     | read-only       | Print every version of a package with whether it is listed or unlisted. No API key needed. |
+| `show`     | read-only       | Print every version of a package with whether it is listed or unlisted, plus its deprecation verdict. No API key needed. |
 | `unlist`   | write           | Unlist specified versions, or all pre-release versions, of a package.                      |
 
 Running `nuversions` with no subcommand prints the command hierarchy.
@@ -92,23 +92,43 @@ Running `nuversions` with no subcommand prints the command hierarchy.
 |----------------|------------------|----------|---------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `--package-id` | string           | yes      | —                                     | The ID of the package, e.g. `MyPackage`.                                                                                                                                  |
 | `--server-url` | string           | no       | `https://api.nuget.org/v3/index.json` | The NuGet server's V3 service index URL. Useful for third-party NuGet servers. Falls back to the `NUVERSIONS_NuGetServerUrl` or `NUGET_SERVER_URL` environment variables. |
-| `--output`     | `text` \| `json` | no       | `text`                                | Output format for stdout: human-readable text, or newline-delimited JSON (one object per version). stderr is unaffected in both modes.                                    |
+| `--output`     | `text` \| `json` | no       | `text`                                | Output format for stdout: human-readable text, or newline-delimited JSON (one object per version). `show` in text mode may also print one deprecation hint line on stderr (see [`show`](#show)).  |
 
 ### `show`
 
-Prints every version the server knows for the package, including unlisted versions, with one status word per version:
+Prints every version the server knows for the package, including unlisted versions, with one status word per version and a trailing deprecation segment where the server records one:
 
 ```text
 Version=1.0.0 Status=listed
-Version=1.0.1 Status=unlisted
+Version=1.0.1 Status=unlisted Deprecation=legacy,critical-bugs
+Version=1.0.2 Status=listed Deprecation=unspecified
 ```
 
 - `listed`: the server lists the version in search results.
 - `unlisted`: the server knows the version but does not list it.
+- `Deprecation=<reasons>`: the version is deprecated. The value is the server's reason words, verbatim and comma-joined in served order. nuget.org records three: `legacy` (the package version is no longer maintained), `critical-bugs`, and `other`. A not-deprecated version gets no `Deprecation=` segment at all, so its line is byte-identical to what earlier releases printed.
+- `Deprecation=unspecified`: the server serves a deprecation object that carries no reasons. The version is deprecated and the reason is unstated.
+
+> The nuget.org reason words are not a closed set: another feed may serve different words, and `show` quotes whatever it gets without validating any of them. `unspecified` is the one NuVersions render token, not a server word; a not-deprecated version carries no `Deprecation=` segment rather than a placeholder word.
 
 The output is sorted by version, ascending. `show` is a pure read: it sends no delete request
 and needs no API key. It exits `0` when the package exists, `1` when a feed-side error occurs,
 and `2` when the package does not exist on the server.
+
+Deprecation arrives on a second pass: after the version enumeration, `show` reads deprecation
+metadata for exactly those versions through NuGet.Protocol's metadata resource, served from the
+registration catalog pages with NuGet.Protocol's own page batching. NuVersions adds no retry and
+does not reduce the request count. A failure on either pass reports the same way: one diagnostic
+on stderr, exit `1`, and no version lines.
+
+When a deprecated version carries a custom deprecation message, text mode finishes with one hint
+line on stderr, never on stdout:
+
+```text
+A deprecated version has a custom deprecation message; rerun with --output json for the full deprecation record.
+```
+
+The message and the alternate package never render in text; `--output json` carries both.
 
 To unlist a version, use `unlist` with that version. The `show` statuses are deliberately
 different from the `unlist` statuses: `show` describes the current state; `unlist` describes the
@@ -181,16 +201,26 @@ Version=1.0.0-alpha.2 Bucket=already-unlisted
 
 ### JSON output
 
-`--output json` switches stdout to newline-delimited JSON (NDJSON): one object per requested version, with exactly three fields in a fixed order. No envelope, no array wrapper, no additional fields:
+`--output json` switches stdout to newline-delimited JSON (NDJSON): one object per requested version in a fixed field order, with no envelope and no array wrapper. `unlist` lines carry exactly three fields:
 
 ```json
 {"package":"MyPackage","version":"1.0.0-alpha.1","status":"unlisted"}
 {"package":"MyPackage","version":"1.0.0-alpha.2","status":"not-on-server"}
 ```
 
+`show` lines carry a fourth field, `deprecation`, after `status`:
+
+```json
+{"package":"MyPackage","version":"1.0.0","status":"listed","deprecation":{"reasons":["legacy"],"message":null,"alternatePackage":null}}
+{"package":"MyPackage","version":"1.0.1","status":"listed","deprecation":null}
+```
+
 - `package`: the package id exactly as supplied to the run.
 - `version`: the normalised version string.
 - `status`: a kebab-case member of the subcommand's status vocabulary in [Unlist version states](#unlist-version-states) or in [`show`](#show). `show` reports the listed/unlisted facts; `unlist` reports what its attempt did.
+- `deprecation` (`show` only): the explicit JSON `null` when the version is not deprecated, otherwise an object with `reasons` (the server's reason words, verbatim), `message` (the server's custom deprecation message, or `null`), and `alternatePackage` (the recommended replacement as an `id`/`range` object, or `null`). Every `show` line carries the key, so the key set never varies.
+
+The key style is mixed on purpose: the top-level words are lowercase (`package`, `version`, `status`, `deprecation`) while the deprecation subtree is camelCase (`reasons`, `message`, `alternatePackage`, `id`, `range`).
 
 stderr is unchanged by this mode. Every error and diagnostic still prints there as human-readable text. In all modes, results, summaries, dry-run plans, and `show` listings print to stdout; errors and diagnostics print to stderr; the API key is never written to any stream. When both are set, `--output json` takes precedence over `--non-interactive` for stdout.
 
@@ -302,7 +332,7 @@ nuversions unlist --package-id "MyPackage" --api-key "myApiKey" --output json "1
 
 ## Unlisting and deprecation
 
-Unlisting hides a version from search and from the nuget.org package details page. Existing consumers can still restore it, and unlisting tells them nothing by itself. Deprecation metadata is what surfaces warnings to `dotnet list package --deprecated` and IDE package managers.
+Unlisting hides a version from search and from the nuget.org package details page. Existing consumers can still restore it, and unlisting tells them nothing by itself. Deprecation metadata is what surfaces warnings to `dotnet list package --deprecated` and IDE package managers, and it is what `show` reads: `show` reports each version's deprecation verdict and reasons (see [`show`](#show)).
 
 NuVersions has no deprecation command, deliberately: unlike unlisting, deprecation has no supported write surface. It is not in the [NuGet Server API](https://learn.microsoft.com/en-us/nuget/api/overview), NuGet.Protocol can only read deprecation metadata (not set it), and the `dotnet nuget` CLI has no deprecate verb. Deprecation can currently only be set manually on the [nuget.org website](https://learn.microsoft.com/en-us/nuget/nuget-org/deprecate-packages). If you are unlisting a vulnerable or broken release, deprecate the version there so consumers get the reason, then use NuVersions to unlist it programmatically.
 

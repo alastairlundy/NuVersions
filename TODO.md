@@ -155,7 +155,9 @@ The gap is only in what the user is told. Possible improvements:
 
 ## Deprecation visibility in `show`; a deprecation command stays out of scope
 
-**Status:** Deferred, not started.
+**Status:** Implemented. `show` reports the per-version deprecation verdict and reasons in both
+text and JSON output (see the Unreleased entry in CHANGELOG.md). The deprecation write path, the
+subject of this entry's second half, stays out of scope.
 **Area:** `src/NuVersionsLib/PackageVersionService.cs`, `src/NuVersionsCli/ShowCommand.cs`,
 `src/NuVersionsLib/Internal/Localizations/Resources.resx`.
 

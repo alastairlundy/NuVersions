@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+### Added
+
+- `show` reports per-version deprecation. A deprecated version gains a trailing
+  `Deprecation=<reasons>` segment in text output, carrying the server's reason words verbatim and
+  comma-joined in served order; nuget.org's words are `legacy` (the package version is no longer
+  maintained), `critical-bugs`, and `other`, and other feeds' words pass through unvalidated. A
+  deprecated version whose deprecation object carries no reasons renders
+  `Deprecation=unspecified`, a NuVersions render token rather than a server word.
+- `show --output json` lines gain `deprecation` as a fourth field after `status`: the full
+  record (`reasons`, `message`, `alternatePackage`), the explicit JSON `null` on not-deprecated
+  lines, so every line carries the same key set. This breaks the documented "exactly three
+  fields" reading of the `show` NDJSON schema; `unlist` lines keep the three-field shape.
+- In text mode, a deprecated version with a custom deprecation message finishes the run with one
+  hint line on stderr, never stdout, telling the user to rerun with `--output json` for the full
+  deprecation record.
+
 ### Changed
 
 - `--unlist-all` now treats stable `0.x` (Major == 0) versions as pre-release: they are enumerated
