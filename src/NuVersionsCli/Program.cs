@@ -26,6 +26,7 @@ Cli.Ext.ConfigureServices(services =>
     services.AddHttpClient()
         .AddSingleton<IPackageAvailabilityDetector, PackageAvailabilityDetector>()
         .AddSingleton<IPackageVersionService, PackageVersionService>()
+        .AddSingleton<IPackageDeprecationService, PackageDeprecationService>()
         // Composing services keyed to the exact vocabulary the --backend option accepts; each
         // resolves its own transport collaborator (the HTTP client factory or the process
         // invoker), and both in-box backends detect 429 themselves, so the fail-fast state

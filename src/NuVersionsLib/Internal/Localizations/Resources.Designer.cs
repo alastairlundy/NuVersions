@@ -78,6 +78,15 @@ namespace NuVersionsLib.Internal.Localizations {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to The package metadata resource is unavailable for &apos;{0}&apos;..
+        /// </summary>
+        internal static string Exceptions_NuGet_FindResources_FindPackageMetadata_Unavailable {
+            get {
+                return ResourceManager.GetString("Exceptions.NuGet.FindResources.FindPackageMetadata.Unavailable", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Package &apos;{0}&apos; does not exist on Nuget Server &apos;{1}&apos;..
         /// </summary>
         internal static string Exceptions_Package_NotFoundOnServer {

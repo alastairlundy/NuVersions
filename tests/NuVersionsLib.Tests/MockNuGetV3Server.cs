@@ -116,6 +116,43 @@ internal sealed class MockNuGetV3Server : IDisposable
         }
     }
 
+    /// <summary>
+    /// Positions deprecation metadata on one version's registration catalog entry — the same place
+    /// a real feed serves it — so the deprecation read fetches it through its normal path. Passing
+    /// <see langword="null"/> removes any fixture, which is also how the not-deprecated fixture
+    /// stays served: a version <see cref="AddPackage"/> registered without this call gets no
+    /// deprecation object at all.
+    /// </summary>
+    /// <param name="packageId">The identifier of a package already registered with <see cref="AddPackage"/>.</param>
+    /// <param name="version">One of that package's already-registered versions.</param>
+    /// <param name="deprecation">The deprecation fixture to serve, or <see langword="null"/> for none.</param>
+    public void SetDeprecation(string packageId, string version, MockDeprecation? deprecation)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(packageId);
+
+        NuGetVersion parsed = NuGetVersion.Parse(version);
+
+        lock (_gate)
+        {
+            if (!_packages.TryGetValue(packageId, out List<MockPackageVersion>? versions))
+            {
+                throw new ArgumentException(
+                    $"Package '{packageId}' is not registered; call AddPackage first.", nameof(packageId));
+            }
+
+            int index = versions.FindIndex(mockVersion => mockVersion.Version == parsed);
+
+            if (index < 0)
+            {
+                throw new ArgumentException(
+                    $"Version '{version}' is not registered for '{packageId}'; call AddPackage first.",
+                    nameof(version));
+            }
+
+            versions[index] = versions[index] with { Deprecation = deprecation };
+        }
+    }
+
     public static MockNuGetV3Server Start()
     {
         for (int attempt = 1; ; attempt++)
@@ -321,13 +358,9 @@ internal sealed class MockNuGetV3Server : IDisposable
         string LeafUrl(string version) => $"{_baseUrl}registration/{idLower}/{version}.json";
 
         JsonArray leaves =
-        [.. versions.Select(version => (JsonNode?)new JsonObject
+        [.. versions.Select(version =>
         {
-            ["@id"] = LeafUrl(version.Version.ToNormalizedString()),
-            ["packageContent"] =
-                $"{_baseUrl}flat/{idLower}/{version.Version.ToNormalizedString()}/" +
-                $"{idLower}.{version.Version.ToNormalizedString()}.nupkg",
-            ["catalogEntry"] = new JsonObject
+            JsonObject catalogEntry = new()
             {
                 ["@id"] = LeafUrl(version.Version.ToNormalizedString()),
                 // "id", "version" and "listed" are the fields the production code reads: package
@@ -335,7 +368,24 @@ internal sealed class MockNuGetV3Server : IDisposable
                 ["id"] = packageId,
                 ["version"] = version.Version.ToNormalizedString(),
                 ["listed"] = version.Listed
+            };
+
+            if (version.Deprecation is not null)
+            {
+                // The "deprecation" object is the fact the deprecation read maps: any object here
+                // — reasons present or not — is the deprecated verdict, and its absence (the
+                // default) is the not-deprecated verdict.
+                catalogEntry["deprecation"] = BuildDeprecation(version.Deprecation);
             }
+
+            return (JsonNode?)new JsonObject
+            {
+                ["@id"] = LeafUrl(version.Version.ToNormalizedString()),
+                ["packageContent"] =
+                    $"{_baseUrl}flat/{idLower}/{version.Version.ToNormalizedString()}/" +
+                    $"{idLower}.{version.Version.ToNormalizedString()}.nupkg",
+                ["catalogEntry"] = catalogEntry
+            };
         })];
 
         // One page with every leaf inlined; the alternative (a page whose "items" is null, fetched
@@ -354,6 +404,42 @@ internal sealed class MockNuGetV3Server : IDisposable
             ["@id"] = $"{_baseUrl}registration/{idLower}/index.json",
             ["items"] = new JsonArray(page)
         }.ToJsonString();
+    }
+
+    /// <summary>
+    /// Builds the registration catalog entry's <c>deprecation</c> object for one fixture, with the
+    /// wire shape a real feed serves: <c>reasons</c> always present, <c>message</c> and
+    /// <c>alternatePackage</c> only when the fixture set them.
+    /// </summary>
+    private static JsonObject BuildDeprecation(MockDeprecation deprecation)
+    {
+        JsonObject deprecationObject = new()
+        {
+            ["reasons"] = new JsonArray(
+                [.. deprecation.Reasons.Select(static reason => (JsonNode?)JsonValue.Create(reason))])
+        };
+
+        if (deprecation.Message is not null)
+        {
+            deprecationObject["message"] = deprecation.Message;
+        }
+
+        if (deprecation.AlternatePackageId is not null)
+        {
+            JsonObject alternatePackage = new()
+            {
+                ["id"] = deprecation.AlternatePackageId
+            };
+
+            if (deprecation.AlternatePackageRange is not null)
+            {
+                alternatePackage["range"] = deprecation.AlternatePackageRange;
+            }
+
+            deprecationObject["alternatePackage"] = alternatePackage;
+        }
+
+        return deprecationObject;
     }
 
     /// <summary>
@@ -397,5 +483,36 @@ internal sealed class MockNuGetV3Server : IDisposable
     }
 
     /// <summary>One version the mock serves, as recorded by <see cref="AddPackage"/>.</summary>
-    private sealed record MockPackageVersion(NuGetVersion Version, bool Listed);
+    private sealed record MockPackageVersion(NuGetVersion Version, bool Listed, MockDeprecation? Deprecation = null);
+}
+
+/// <summary>
+/// One version's deprecation metadata fixture, placed on its registration catalog entry by
+/// <see cref="MockNuGetV3Server.SetDeprecation"/>.
+/// </summary>
+/// <remarks>
+/// The five fixtures the deprecation feature pins: <see cref="OneReason"/>,
+/// <see cref="SeveralReasons"/>, <see cref="ReasonlessObject"/>,
+/// <see cref="MessageAndAlternatePackage"/>, and the not-deprecated case, which is no fixture at
+/// all — a version registered with <see cref="MockNuGetV3Server.AddPackage"/> and never passed to
+/// <see cref="MockNuGetV3Server.SetDeprecation"/> gets no deprecation object on its catalog entry.
+/// </remarks>
+internal sealed record MockDeprecation(
+    IReadOnlyList<string> Reasons,
+    string? Message,
+    string? AlternatePackageId,
+    string? AlternatePackageRange)
+{
+    /// <summary>Fixture: deprecated with one reason word, served verbatim.</summary>
+    public static MockDeprecation OneReason { get; } = new(["legacy"], null, null, null);
+
+    /// <summary>Fixture: deprecated with several reason words, order preserved.</summary>
+    public static MockDeprecation SeveralReasons { get; } = new(["legacy", "critical-bugs", "other"], null, null, null);
+
+    /// <summary>Fixture: a deprecation object carrying no reasons at all — still deprecated.</summary>
+    public static MockDeprecation ReasonlessObject { get; } = new([], null, null, null);
+
+    /// <summary>Fixture: deprecated with a custom message and an alternate (replacement) package.</summary>
+    public static MockDeprecation MessageAndAlternatePackage { get; } = new(
+        ["other"], "Use Demo.Package.Next instead.", "Demo.Package.Next", "[2.0.0, )");
 }
