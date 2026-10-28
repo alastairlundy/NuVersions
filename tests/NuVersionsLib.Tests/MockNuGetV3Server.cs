@@ -59,6 +59,8 @@ internal sealed class MockNuGetV3Server : IDisposable
     private readonly List<RecordedRequest> _requests = [];
     private readonly Lock _gate = new();
     private readonly string _baseUrl;
+    private bool _failRegistration;
+    private int _registrationFailureStatus = (int)HttpStatusCode.InternalServerError;
     private Task _serveLoop = Task.CompletedTask;
 
     private MockNuGetV3Server(HttpListener listener, int port)
@@ -150,6 +152,25 @@ internal sealed class MockNuGetV3Server : IDisposable
             }
 
             versions[index] = versions[index] with { Deprecation = deprecation };
+        }
+    }
+
+    /// <summary>
+    /// Fails every registration-index read with <paramref name="statusCode"/>. Registration pages
+    /// are what both passes of show's read fetch — the version enumeration and the deprecation
+    /// second pass — so this is the failing feed the run dies on: one stderr diagnostic, exit 1,
+    /// no version lines (ledger T005). The deprecation pass alone cannot be addressed on the wire
+    /// while enumeration succeeds, because NuGet.Protocol's HTTP cache serves it the enumeration's
+    /// stored registration response; that pass's own failure shape is pinned at the command seam
+    /// instead (see the show deprecation-read failure test).
+    /// </summary>
+    /// <param name="statusCode">The status code every registration read answers with.</param>
+    public void FailRegistration(int statusCode = (int)HttpStatusCode.InternalServerError)
+    {
+        lock (_gate)
+        {
+            _failRegistration = true;
+            _registrationFailureStatus = statusCode;
         }
     }
 
@@ -302,6 +323,13 @@ internal sealed class MockNuGetV3Server : IDisposable
             if (method == "GET" && TryTakeSegment(path, prefix: "/registration/",
                     suffix: "/index.json", out string registrationId))
             {
+                if (_failRegistration)
+                {
+                    // The registration read both show passes depend on fails feed-side (T005).
+                    statusCode = _registrationFailureStatus;
+                    return null;
+                }
+
                 if (!_packages.TryGetValue(registrationId,
                         out List<MockPackageVersion>? registrationVersions))
                 {

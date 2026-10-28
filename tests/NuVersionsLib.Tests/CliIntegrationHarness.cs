@@ -130,6 +130,7 @@ internal static class CliIntegrationHarness
         services.AddHttpClient()
             .AddSingleton<IPackageAvailabilityDetector, PackageAvailabilityDetector>()
             .AddSingleton<IPackageVersionService, PackageVersionService>()
+            .AddSingleton<IPackageDeprecationService, PackageDeprecationService>()
             .AddKeyedSingleton<IPackageUnlistService>("http", static (serviceProvider, _) =>
                 new HttpPackageUnlistService(
                     serviceProvider.GetRequiredService<IPackageVersionService>(),

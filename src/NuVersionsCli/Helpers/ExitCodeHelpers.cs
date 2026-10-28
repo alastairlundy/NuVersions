@@ -85,8 +85,11 @@ internal static class ExitCodeHelpers
             return true;
         }
 
-        if (exception is NuGetProtocolException or InvalidOperationException)
+        if (exception is NuGetProtocolException or HttpRequestException or InvalidOperationException)
         {
+            // HttpRequestException is the HTTP transport's own failure (a 4xx/5xx body or a dead
+            // connection); without this arm a feed-side failure would escape the command catch and
+            // surface as an unhandled stack trace instead of the documented one-line diagnostic.
             exitCode = ExitFailure;
             return true;
         }

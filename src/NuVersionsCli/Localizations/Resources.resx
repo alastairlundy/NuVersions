@@ -51,4 +51,7 @@
     <data name="Failures.OutputModes.InvalidOutputMode" xml:space="preserve">
         <value>Invalid output mode. Valid values are: text, JSON.</value>
     </data>
+    <data name="Hints.Show.FullDeprecationJson" xml:space="preserve">
+        <value>A deprecated version has a custom deprecation message; rerun with --output json for the full deprecation record.</value>
+    </data>
 </root>

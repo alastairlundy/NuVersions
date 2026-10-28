@@ -17,13 +17,15 @@
  */
 
 using System.ComponentModel;
+using NuGet.Versioning;
 using NuVersionsCli.Helpers;
 
 namespace NuVersionsCli;
 
 /// <summary>
 /// The <c>show</c> subcommand: a pure read that prints every version of a package with whether
-/// the server lists or has already unlisted it, including stable versions.
+/// the server lists or has already unlisted it, including stable versions, plus each version's
+/// deprecation verdict.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -35,9 +37,17 @@ namespace NuVersionsCli;
 /// </para>
 /// <para>
 /// The line shape mirrors <see cref="UnlistCommand"/> («Version=&lt;normalized&gt;
-/// Status=&lt;kebab-case&gt;» and one three-field NDJSON object), with a show-specific closed
-/// status vocabulary: <c>listed</c> and <c>unlisted</c>. Exit codes: 0 success, 1 feed-side
-/// failure, 2 the package does not exist on the server, 130 Ctrl-C.
+/// Status=&lt;kebab-case&gt;» with a show-specific closed status vocabulary: <c>listed</c> and
+/// <c>unlisted</c>), extended only where deprecation exists: a deprecated version gains
+/// a trailing «Deprecation=&lt;reasons&gt;» segment («Deprecation=unspecified» when the served
+/// object carries no reasons) while every not-deprecated line stays byte-identical, and under
+/// <c>--output json</c> the per-version object gains <c>deprecation</c> as its fourth field with
+/// the explicit JSON <see langword="null"/> on not-deprecated lines. The read is two-pass — the
+/// version enumeration, then deprecation metadata for exactly those versions — and both passes
+/// collapse feed-side failures onto the same shape: one stderr diagnostic, exit 1, no version
+/// lines. When a deprecated version carries a custom message, one localized hint line goes to
+/// stderr alone (never stdout) telling the user to rerun with <c>--output json</c>. Exit codes:
+/// 0 success, 1 feed-side failure, 2 the package does not exist on the server, 130 Ctrl-C.
 /// </para>
 /// </remarks>
 [CliCommand(Name = "show", Parent = typeof(RootCommand),
@@ -46,13 +56,16 @@ public class ShowCommand
 {
     private readonly IConfiguration _configuration;
     private readonly IPackageVersionService _packageVersionService;
+    private readonly IPackageDeprecationService _packageDeprecationService;
     private readonly string? _serverUrlGeneric;
 
     public ShowCommand(IConfiguration configuration,
-        IPackageVersionService packageVersionService)
+        IPackageVersionService packageVersionService,
+        IPackageDeprecationService packageDeprecationService)
     {
         _configuration = configuration;
         _packageVersionService = packageVersionService;
+        _packageDeprecationService = packageDeprecationService;
 
         // Prefetched as a plain value so the command body holds no environment-variable lookups;
         // the precedence chain itself lives in ConfigurationValueHelpers.ResolveServerUrl.
@@ -104,12 +117,10 @@ public class ShowCommand
                 versions.Add(info);
             }
 
-            bool json = OutputModeHelpers.IsJson(options.OutputMode);
+            IDictionary<NuGetVersion, PackageDeprecationInfo?> deprecationByVersion =
+                await ReadDeprecationAsync(options, versions, cancellationSource.Token).ConfigureAwait(true);
 
-            foreach (PackageVersionListingInfo info in versions.OrderBy(static v => v.PackageVersion))
-            {
-                await Console.Out.WriteLineAsync(DescribeListing(options.PackageId, info, json)).ConfigureAwait(true);
-            }
+            await WriteVersionsAsync(options, versions, deprecationByVersion).ConfigureAwait(true);
 
             return ExitCodeHelpers.ExitSuccess;
         }
@@ -119,10 +130,58 @@ public class ShowCommand
         }
         catch (Exception exception) when (ExitCodeHelpers.TryFromException(exception, out int exitCode))
         {
-            // Package-not-found-on-server is a usage error; a NuGet.Protocol failure or an
-            // unavailable resource is a feed-side problem. Both report the message on stderr.
+            // Package-not-found-on-server is a usage error; a NuGet.Protocol failure, an HTTP
+            // transport failure, or an unavailable resource is a feed-side problem. Both report
+            // the message on stderr.
             await Console.Error.WriteLineAsync(exception.Message).ConfigureAwait(true);
             return exitCode;
+        }
+    }
+
+    /// <summary>
+    /// The second pass of the two-pass read: deprecation metadata for exactly the versions the
+    /// enumeration returned, fetched before any line renders so a feed-side failure collapses onto
+    /// the same catch shape as the enumeration itself — one stderr diagnostic, exit 1, no version
+    /// lines, no per-version degrade token and no new exit code (decision ledger T005).
+    /// </summary>
+    private async Task<IDictionary<NuGetVersion, PackageDeprecationInfo?>> ReadDeprecationAsync(
+        ShowOptions options, List<PackageVersionListingInfo> versions, CancellationToken cancellationToken)
+    {
+        if (versions.Count == 0)
+        {
+            return new Dictionary<NuGetVersion, PackageDeprecationInfo?>();
+        }
+
+        return await _packageDeprecationService.CheckPackageVersionsDeprecationAsync(
+            options.ServerUrl, "show", options.PackageId,
+            [.. versions.Select(static version => version.PackageVersion)],
+            cancellationToken).ConfigureAwait(true);
+    }
+
+    /// <summary>
+    /// Writes every version line in ascending version order, then — text mode only — the single
+    /// custom-message awareness hint on stderr: exactly one localized line when any deprecated
+    /// version carries a custom message, never on stdout, never in JSON mode, where consumers
+    /// already carry the full deprecation record (decision ledger D005).
+    /// </summary>
+    private static async Task WriteVersionsAsync(ShowOptions options,
+        IReadOnlyList<PackageVersionListingInfo> versions,
+        IDictionary<NuGetVersion, PackageDeprecationInfo?> deprecationByVersion)
+    {
+        bool json = OutputModeHelpers.IsJson(options.OutputMode);
+        bool customMessageSeen = false;
+
+        foreach (PackageVersionListingInfo info in versions.OrderBy(static v => v.PackageVersion))
+        {
+            deprecationByVersion.TryGetValue(info.PackageVersion, out PackageDeprecationInfo? deprecation);
+            customMessageSeen |= !string.IsNullOrEmpty(deprecation?.Message);
+
+            await Console.Out.WriteLineAsync(DescribeListing(options.PackageId, info, json, deprecation)).ConfigureAwait(true);
+        }
+
+        if (!json && customMessageSeen)
+        {
+            await Console.Error.WriteLineAsync(Resources.Hints_Show_FullDeprecationJson).ConfigureAwait(true);
         }
     }
 
@@ -139,18 +198,43 @@ public class ShowCommand
     }
 
     /// <summary>
-    /// One line of the show output in the same shape the unlist command emits: a normalised
-    /// version plus a kebab-case status member, rendered as NDJSON under <c>--output json</c>.
+    /// One line of the show output in the same shape the unlist command emits, plus the
+    /// deprecation verdict where it exists: a normalised version, a kebab-case status member, and
+    /// for a deprecated version only a trailing «Deprecation=&lt;reasons&gt;» segment — rendered
+    /// as NDJSON (fourth <c>deprecation</c> field, explicit <see langword="null"/> when absent)
+    /// under <c>--output json</c>.
     /// </summary>
-    private static string DescribeListing(string packageId, PackageVersionListingInfo info, bool json)
+    private static string DescribeListing(string packageId, PackageVersionListingInfo info, bool json,
+        PackageDeprecationInfo? deprecation)
     {
         string status = info.IsListed ? "listed" : "unlisted";
 
         if (json)
         {
-            return NdjsonHelpers.ToPackageVersionLine(packageId, info.PackageVersion, status);
+            return NdjsonHelpers.ToPackageVersionLine(packageId, info.PackageVersion, status, deprecation);
         }
 
-        return $"Version={info.PackageVersion.ToNormalizedString()} Status={status}";
+        string line = $"Version={info.PackageVersion.ToNormalizedString()} Status={status}";
+
+        if (deprecation is null)
+        {
+            // Byte-identical to the pre-deprecation formatter: no segment, no variant (ledger T003).
+            return line;
+        }
+
+        return $"{line} Deprecation={RenderReasons(deprecation)}";
+    }
+
+    /// <summary>
+    /// The «Deprecation=» segment's value: the server's reason words verbatim and comma-joined in
+    /// served order — no translation, no renaming (D003) — or the <c>unspecified</c> render token
+    /// when a deprecated version's deprecation object carries no reasons at all (D002, T003).
+    /// <c>unspecified</c> is a NuVersions render token, not a server word, and is never localized.
+    /// </summary>
+    private static string RenderReasons(PackageDeprecationInfo deprecation)
+    {
+        return deprecation.Reasons.Count == 0
+            ? "unspecified"
+            : string.Join(",", deprecation.Reasons);
     }
 }

@@ -157,5 +157,14 @@ namespace NuVersionsCli.Localizations {
                 return ResourceManager.GetString("Failures.PackageId.Required", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to A deprecated version has a custom deprecation message; rerun with --output json for the full deprecation record..
+        /// </summary>
+        internal static string Hints_Show_FullDeprecationJson {
+            get {
+                return ResourceManager.GetString("Hints.Show.FullDeprecationJson", resourceCulture);
+            }
+        }
     }
 }

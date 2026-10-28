@@ -21,12 +21,15 @@ using System.Text.Json.Serialization;
 namespace NuVersionsCli.Helpers;
 
 /// <summary>
-/// The AOT and trim-safe source-generation context for the NDJSON output contract. Only string
-/// serialization is needed here, so the context generates UTF-8 writers only and no reflection
-/// metadata.
+/// The AOT and trim-safe source-generation context for the NDJSON output contract. String
+/// serialization plus the show deprecation record are generated in serialization mode only, so
+/// the context emits UTF-8 writers and no reflection metadata; the camelCase policy shapes the
+/// deprecation subtree's keys, with no rename mappings anywhere in the contract.
 /// </summary>
-[JsonSourceGenerationOptions(GenerationMode = JsonSourceGenerationMode.Serialization)]
+[JsonSourceGenerationOptions(GenerationMode = JsonSourceGenerationMode.Serialization,
+    PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
 [JsonSerializable(typeof(string))]
+[JsonSerializable(typeof(ShowDeprecationRecord))]
 internal sealed partial class NdjsonJsonContext : JsonSerializerContext
 {
 }
