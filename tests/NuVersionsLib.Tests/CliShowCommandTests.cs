@@ -29,9 +29,8 @@ namespace NuVersionsLib.Tests;
 /// <summary>
 /// End-to-end proofs for the <c>nuversions show</c> subcommand over the in-process mock V3
 /// server: the closed listed/unlisted vocabulary, the read-only guarantee (no API key on any
-/// request, no DELETE dispatched), the deprecation render contract in both output modes
-/// (decision ledger T003/T004/D005), the stderr hint routing, and the exit-code shapes 0, 1
-/// and 2.
+/// request, no DELETE dispatched), the deprecation render contract in both output modes, the
+/// stderr hint routing, and the exit-code shapes 0, 1 and 2.
 /// </summary>
 [NotInParallel] // ShowCommand.RunAsync redirects the Console streams; runs must not interleave.
 public class CliShowCommandTests
@@ -90,7 +89,7 @@ public class CliShowCommandTests
         await Assert.That(lines.Length).IsEqualTo(3);
         await Assert.That(lines[0]).IsEqualTo("Version=1.0.0 Status=listed");
         // Reasons verbatim and in served order, comma-joined, trailing segment on the deprecated
-        // line only; the not-deprecated siblings keep the pre-deprecation shape (T003, D003).
+        // line only; the not-deprecated siblings keep the pre-deprecation shape.
         await Assert.That(lines[1]).IsEqualTo("Version=1.0.1 Status=unlisted Deprecation=legacy,critical-bugs,other");
         await Assert.That(lines[2]).IsEqualTo("Version=1.0.2 Status=listed");
         // No custom message in the fixtures, so no hint is due.
@@ -110,8 +109,8 @@ public class CliShowCommandTests
             "--package-id", packageId,
             "--server-url", server.ServiceIndexUrl);
 
-        // A reason-less object is still deprecated (D002); the value is the NuVersions render
-        // token, not a server word, and the line carries no other change (T003).
+        // A reason-less object is still deprecated; the value is the NuVersions render
+        // token, not a server word, and the line carries no other change.
         await Assert.That(run.ExitCode).IsEqualTo(ExitCodeHelpers.ExitSuccess);
         await Assert.That(run.StdOut).IsEqualTo($"Version=1.0.0 Status=listed Deprecation=unspecified{Environment.NewLine}");
         await Assert.That(run.StdErr).IsEmpty();
@@ -151,7 +150,7 @@ public class CliShowCommandTests
 
         await Assert.That(run.ExitCode).IsEqualTo(ExitCodeHelpers.ExitSuccess);
 
-        // Exactly one hint line, on stderr alone, naming the JSON rerun (D005).
+        // Exactly one hint line, on stderr alone, naming the JSON rerun.
         string[] errorLines = Lines(run.StdErr);
         await Assert.That(errorLines.Length).IsEqualTo(1);
         await Assert.That(errorLines[0].Contains("--output json")).IsTrue();
@@ -206,9 +205,9 @@ public class CliShowCommandTests
         await Assert.That(lines.Length).IsEqualTo(3);
         // Deprecated with a reason and nothing else: message and alternatePackage explicit null.
         await Assert.That(lines[0]).IsEqualTo(ExpectedJsonLine(packageId, "1.0.0", "listed", OneReasonDeprecation));
-        // Full object: verbatim reasons, custom message, alternate package id and range (T004).
+        // Full object: verbatim reasons, custom message, alternate package id and range.
         await Assert.That(lines[1]).IsEqualTo(ExpectedJsonLine(packageId, "1.0.1", "unlisted", FullDeprecation));
-        // Not deprecated: the explicit JSON null member, fourth field after status (T004).
+        // Not deprecated: the explicit JSON null member, fourth field after status.
         await Assert.That(lines[2]).IsEqualTo(ExpectedJsonLine(packageId, "1.0.2", "listed", "null"));
 
         foreach (string line in lines)
@@ -230,7 +229,7 @@ public class CliShowCommandTests
         server.AddPackage(packageId, ("1.0.0", true), ("1.0.1", false));
         // Registration pages are what the whole read is served from: the feed-side failure maps
         // onto show's existing error shape — one stderr diagnostic, exit 1, zero stdout lines,
-        // no new exit code and no per-version degrade token (T005).
+        // no new exit code and no per-version degrade token.
         server.FailRegistration();
 
         CommandRun run = await CliIntegrationHarness.RunSubcommandAsync(
@@ -251,7 +250,7 @@ public class CliShowCommandTests
         server.AddPackage(packageId, ("1.0.0", true));
 
         // The version enumeration succeeds against the mock and only the second pass — the
-        // deprecation read — fails, pinning T005 precisely: one stderr diagnostic, exit 1, and
+        // deprecation read — fails, pinning the shape: one stderr diagnostic, exit 1, and
         // no version line ever rendered (the second pass runs before any output).
         CommandRun run = await RunWithFailingDeprecationReadAsync(server, packageId);
 

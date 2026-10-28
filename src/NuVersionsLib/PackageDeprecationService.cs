@@ -81,8 +81,8 @@ public class PackageDeprecationService : IPackageDeprecationService
         foreach (NuGetVersion version in packageVersions.Distinct())
         {
             // A requested version the served metadata carries no deprecation object for is not
-            // deprecated (D002) — the same verdict as a feed that never serves the fact at all,
-            // which is what keeps the absent and no-fact cases indistinguishable.
+            // deprecated — the same verdict as a feed that never serves the fact at all, which
+            // is what keeps the absent and no-fact cases indistinguishable.
             output[version] = metadataByVersion.TryGetValue(version, out PackageDeprecationInfo? deprecationInfo)
                 ? deprecationInfo
                 : null;
@@ -95,7 +95,7 @@ public class PackageDeprecationService : IPackageDeprecationService
     /// Maps one version's served deprecation object onto its metadata record: any object the
     /// server serves is the deprecated verdict, even a reason-less one; an absent object is the
     /// not-deprecated verdict (<see langword="null"/>). Reasons pass through verbatim — no
-    /// translation, no normalization (D002, D003). Advisory data is never read (ADR 0001).
+    /// translation, no normalization. Advisory data is never read (ADR 0001).
     /// </summary>
     internal static PackageDeprecationInfo? MapDeprecationMetadata(PackageDeprecationMetadata? deprecationMetadata)
     {

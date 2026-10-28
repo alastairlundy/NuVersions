@@ -142,7 +142,7 @@ public class ShowCommand
     /// The second pass of the two-pass read: deprecation metadata for exactly the versions the
     /// enumeration returned, fetched before any line renders so a feed-side failure collapses onto
     /// the same catch shape as the enumeration itself — one stderr diagnostic, exit 1, no version
-    /// lines, no per-version degrade token and no new exit code (decision ledger T005).
+    /// lines, no per-version degrade token and no new exit code.
     /// </summary>
     private async Task<IDictionary<NuGetVersion, PackageDeprecationInfo?>> ReadDeprecationAsync(
         ShowOptions options, List<PackageVersionListingInfo> versions, CancellationToken cancellationToken)
@@ -162,7 +162,7 @@ public class ShowCommand
     /// Writes every version line in ascending version order, then — text mode only — the single
     /// custom-message awareness hint on stderr: exactly one localized line when any deprecated
     /// version carries a custom message, never on stdout, never in JSON mode, where consumers
-    /// already carry the full deprecation record (decision ledger D005).
+    /// already carry the full deprecation record.
     /// </summary>
     private static async Task WriteVersionsAsync(ShowOptions options,
         IReadOnlyList<PackageVersionListingInfo> versions,
@@ -218,7 +218,7 @@ public class ShowCommand
 
         if (deprecation is null)
         {
-            // Byte-identical to the pre-deprecation formatter: no segment, no variant (ledger T003).
+            // Byte-identical to the pre-deprecation formatter: no segment, no variant.
             return line;
         }
 
@@ -227,8 +227,8 @@ public class ShowCommand
 
     /// <summary>
     /// The «Deprecation=» segment's value: the server's reason words verbatim and comma-joined in
-    /// served order — no translation, no renaming (D003) — or the <c>unspecified</c> render token
-    /// when a deprecated version's deprecation object carries no reasons at all (D002, T003).
+    /// served order — no translation, no renaming — or the <c>unspecified</c> render token
+    /// when a deprecated version's deprecation object carries no reasons at all.
     /// <c>unspecified</c> is a NuVersions render token, not a server word, and is never localized.
     /// </summary>
     private static string RenderReasons(PackageDeprecationInfo deprecation)

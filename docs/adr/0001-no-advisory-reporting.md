@@ -41,6 +41,5 @@ Three reasons it was deliberately not built:
 
 ## References
 
-- `docs/decisions/DECISIONS-nuversions-show-deprecation.md` D001-D004: the session record behind this decision.
 - [NuGet Client SDK](https://learn.microsoft.com/en-us/nuget/reference/nuget-client-sdk): `IPackageSearchMetadata` carries both deprecation and vulnerability data; the read-side source rejected here.
 - `dotnet list package --vulnerable`: the existing consumer-side advisory surface.

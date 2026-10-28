@@ -24,10 +24,9 @@ namespace NuVersionsLib.Models;
 /// </summary>
 /// <remarks>
 /// A version maps to this record exactly when the server serves it a deprecation object — the
-/// verdict rule is presence of the object itself, so a version with no reasons still maps here
-/// (decision ledger D002); a version the server serves no deprecation object for is not
-/// deprecated and maps to no record at all. Advisory data is never read into this record
-/// (ADR 0001).
+/// verdict rule is presence of the object itself, so a version with no reasons still maps here;
+/// a version the server serves no deprecation object for is not deprecated and maps to no
+/// record at all. Advisory data is never read into this record (ADR 0001).
 /// </remarks>
 public sealed record PackageDeprecationInfo
 {

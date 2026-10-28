@@ -21,8 +21,8 @@ using NuGet.Versioning;
 namespace NuVersionsLib.Tests;
 
 /// <summary>
-/// The deprecation read's verdict mapping (decision ledger D002) and its metadata parts (D005)
-/// against the <see cref="MockNuGetV3Server"/> deprecation fixtures: the server serves the
+/// The deprecation read's verdict mapping and its metadata parts against the
+/// <see cref="MockNuGetV3Server"/> deprecation fixtures: the server serves the
 /// deprecation object on registration catalog entries, the production service fetches them
 /// through NuGet.Protocol's metadata resource, and the assertions pin the mapping at that seam —
 /// no test scripts a verdict directly.
@@ -73,7 +73,7 @@ public class PackageDeprecationServiceTests
 
         PackageDeprecationInfo? verdict = await FetchSingleAsync(server, packageId, V("1.0.0"));
 
-        // The verdict is the served object itself: reasons play no part in it (D002).
+        // The verdict is the served object itself: reasons play no part in it.
         await Assert.That(verdict).IsNotNull();
         await Assert.That(verdict!.Reasons).IsEmpty();
     }
@@ -101,7 +101,7 @@ public class PackageDeprecationServiceTests
         using MockNuGetV3Server server = MockNuGetV3Server.Start();
         string packageId = NewPackageId();
         // Both versions served; only the unlisted one carries a deprecation object, so the read
-        // must also see the unlisted version's metadata (T002: unlisted included).
+        // must also see the unlisted version's metadata.
         server.AddPackage(packageId, ("1.0.0", true), ("1.0.1", false));
         server.SetDeprecation(packageId, "1.0.1", MockDeprecation.OneReason);
 

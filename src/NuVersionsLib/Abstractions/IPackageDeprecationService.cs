@@ -29,7 +29,7 @@ public interface IPackageDeprecationService
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The verdict rule (decision ledger D002): a version maps to non-null metadata when the
+    /// The verdict rule: a version maps to non-null metadata when the
     /// server serves it a deprecation object — reasons present or not, a reason-less object still
     /// counts as deprecated — and to <see langword="null"/> when the object is absent. A feed
     /// that serves versions but no deprecation fact therefore reads as not deprecated, exactly

@@ -21,7 +21,7 @@ namespace NuVersionsCli.Helpers;
 /// <summary>
 /// The show JSON line's <c>deprecation</c> subtree: <c>reasons</c> (verbatim words), <c>message</c>,
 /// and <c>alternatePackage</c>, serialized camelCase through <see cref="NdjsonJsonContext"/> with no
-/// rename mappings (decision ledger T004).
+/// rename mappings.
 /// </summary>
 /// <param name="Reasons">The server's reason words verbatim, empty for a reason-less object.</param>
 /// <param name="Message">The server's custom deprecation message, or <see langword="null"/>.</param>

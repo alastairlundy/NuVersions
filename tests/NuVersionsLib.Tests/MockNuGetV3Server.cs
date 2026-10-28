@@ -159,7 +159,7 @@ internal sealed class MockNuGetV3Server : IDisposable
     /// Fails every registration-index read with <paramref name="statusCode"/>. Registration pages
     /// are what both passes of show's read fetch — the version enumeration and the deprecation
     /// second pass — so this is the failing feed the run dies on: one stderr diagnostic, exit 1,
-    /// no version lines (ledger T005). The deprecation pass alone cannot be addressed on the wire
+    /// no version lines. The deprecation pass alone cannot be addressed on the wire
     /// while enumeration succeeds, because NuGet.Protocol's HTTP cache serves it the enumeration's
     /// stored registration response; that pass's own failure shape is pinned at the command seam
     /// instead (see the show deprecation-read failure test).
@@ -325,7 +325,7 @@ internal sealed class MockNuGetV3Server : IDisposable
             {
                 if (_failRegistration)
                 {
-                    // The registration read both show passes depend on fails feed-side (T005).
+                    // The registration read both show passes depend on fails feed-side.
                     statusCode = _registrationFailureStatus;
                     return null;
                 }

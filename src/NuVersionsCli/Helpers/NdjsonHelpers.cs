@@ -30,7 +30,7 @@ namespace NuVersionsCli.Helpers;
 /// The unlist and show commands render the same per-version object, so the serializer lives here
 /// instead of being copied into each command. The shape is part of the output contract: show's
 /// fourth field is the explicit JSON <see langword="null"/> on every not-deprecated line, so
-/// every show line carries the same key set (decision ledger T004).
+/// every show line carries the same key set.
 /// </remarks>
 internal static class NdjsonHelpers
 {
@@ -53,7 +53,7 @@ internal static class NdjsonHelpers
     /// Renders one per-version NDJSON object with show's four-field shape: <c>deprecation</c>
     /// fourth after <c>status</c>, serialized through <see cref="NdjsonJsonContext"/> with
     /// camelCase keys, and the explicit JSON <see langword="null"/> when the version is not
-    /// deprecated (decision ledger T004).
+    /// deprecated.
     /// </summary>
     /// <param name="packageId">The package the version belongs to.</param>
     /// <param name="version">The version the line describes.</param>
