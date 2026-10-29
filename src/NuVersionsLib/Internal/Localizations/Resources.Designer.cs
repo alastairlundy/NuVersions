@@ -87,6 +87,24 @@ namespace NuVersionsLib.Internal.Localizations {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to The deprecation metadata read for &apos;{0}&apos; on the server &apos;{1}&apos; failed: {2}.
+        /// </summary>
+        internal static string Exceptions_NuGet_PackageMetadata_DeprecationReadFailed {
+            get {
+                return ResourceManager.GetString("Exceptions.NuGet.PackageMetadata.DeprecationReadFailed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The package metadata read for &apos;{0}&apos; on the server &apos;{1}&apos; failed: {2}.
+        /// </summary>
+        internal static string Exceptions_NuGet_PackageMetadata_ReadFailed {
+            get {
+                return ResourceManager.GetString("Exceptions.NuGet.PackageMetadata.ReadFailed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Package &apos;{0}&apos; does not exist on Nuget Server &apos;{1}&apos;..
         /// </summary>
         internal static string Exceptions_Package_NotFoundOnServer {

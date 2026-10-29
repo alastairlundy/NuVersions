@@ -41,7 +41,11 @@ public interface IPackageDeprecationService
     /// </para>
     /// </remarks>
     /// <param name="nugetApiUrl">The URL of the NuGet API.</param>
-    /// <param name="nugetApiKey">The API key for authentication against the NuGet API.</param>
+    /// <param name="nugetApiKey">
+    /// The API key for authentication against the NuGet API. Shape-compatibility only: this read
+    /// never uses or transmits the key, exactly like the other read paths (see
+    /// <see cref="IPackageVersionService"/>); making keys meaningful on reads is tracked in TODO.md.
+    /// </param>
     /// <param name="packageId">The identifier of the package to check.</param>
     /// <param name="packageVersions">The specific versions of the package to read deprecation metadata for.</param>
     /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>

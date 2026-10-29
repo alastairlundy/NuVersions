@@ -33,4 +33,10 @@
     <data name="Exceptions.NuGet.FindResources.FindPackageMetadata.Unavailable" xml:space="preserve">
         <value>The package metadata resource is unavailable for '{0}'.</value>
     </data>
+    <data name="Exceptions.NuGet.PackageMetadata.ReadFailed" xml:space="preserve">
+        <value>The package metadata read for '{0}' on the server '{1}' failed: {2}</value>
+    </data>
+    <data name="Exceptions.NuGet.PackageMetadata.DeprecationReadFailed" xml:space="preserve">
+        <value>The deprecation metadata read for '{0}' on the server '{1}' failed: {2}</value>
+    </data>
 </root>

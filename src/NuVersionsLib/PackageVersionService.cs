@@ -53,14 +53,23 @@ public class PackageVersionService : IPackageVersionService
 
         using SourceCacheContext cacheContext = new SourceCacheContext();
 
-        FindPackageByIdResource? resource = await repoInfo.GetResourceAsync<FindPackageByIdResource>(cancellationToken).ConfigureAwait(false);
+        FindPackageByIdResource? resource =
+            await repoInfo.GetResourceAsync<FindPackageByIdResource>(cancellationToken).ConfigureAwait(false);
 
         if (resource is null)
             throw new InvalidOperationException($"Package metadata resource is not available for this source: {nugetApiUrl}");
 
-        IEnumerable<NuGetVersion>? allPackageVersions =
-            await resource.GetAllVersionsAsync(packageId, cacheContext, NullLogger.Instance,
+        IEnumerable<NuGetVersion>? allPackageVersions;
+
+        try
+        {
+            allPackageVersions = await resource.GetAllVersionsAsync(packageId, cacheContext, NullLogger.Instance,
                 cancellationToken).ConfigureAwait(false);
+        }
+        catch (HttpRequestException e)
+        {
+            throw WrapContext(packageId, nugetApiUrl, e);
+        }
 
         if (allPackageVersions is null)
         {
@@ -93,14 +102,23 @@ public class PackageVersionService : IPackageVersionService
 
         using SourceCacheContext cacheContext = new SourceCacheContext();
 
-        FindPackageByIdResource? resource = await repoInfo.GetResourceAsync<FindPackageByIdResource>(cancellationToken).ConfigureAwait(false);
+        FindPackageByIdResource? resource =
+            await repoInfo.GetResourceAsync<FindPackageByIdResource>(cancellationToken).ConfigureAwait(false);
 
         if (resource is null)
             throw new InvalidOperationException($"Package metadata resource is not available for this source: {nugetApiUrl}");
 
-        IEnumerable<NuGetVersion>? allPackageVersions =
-            await resource.GetAllVersionsAsync(packageId, cacheContext, NullLogger.Instance,
+        IEnumerable<NuGetVersion>? allPackageVersions;
+
+        try
+        {
+            allPackageVersions = await resource.GetAllVersionsAsync(packageId, cacheContext, NullLogger.Instance,
                 cancellationToken).ConfigureAwait(false);
+        }
+        catch (HttpRequestException e)
+        {
+            throw WrapContext(packageId, nugetApiUrl, e);
+        }
 
         if (allPackageVersions is null)
             return [];
@@ -199,7 +217,16 @@ public class PackageVersionService : IPackageVersionService
 
         PackageIdentity identity = new(packageId, packageVersion);
 
-        IPackageSearchMetadata? result = await metadataResource.GetMetadataAsync(identity, cacheContext, NullLogger.Instance, cancellationToken).ConfigureAwait(false);
+        IPackageSearchMetadata? result;
+
+        try
+        {
+            result = await metadataResource.GetMetadataAsync(identity, cacheContext, NullLogger.Instance, cancellationToken).ConfigureAwait(false);
+        }
+        catch (HttpRequestException e)
+        {
+            throw WrapContext(packageId, nugetApiUrl, e);
+        }
 
         if (result is null)
             return false;
@@ -266,6 +293,17 @@ public class PackageVersionService : IPackageVersionService
 
     private SourceRepository GetRepoInfo(string nugetApiUrl) => Repository.Factory.GetCoreV3(nugetApiUrl);
 
+    /// <summary>
+    /// Wraps a bare <see cref="HttpRequestException"/> from a metadata read into the recognized
+    /// failure family with the package and server named: the exception message alone carries only
+    /// the HTTP status, but the CLI's one-line diagnostic (the printed <see cref="Exception.Message"/>)
+    /// has no other context. The wrapped <see cref="FatalProtocolException"/> (the concrete
+    /// <see cref="NuGetProtocolException"/> subclass) keeps the existing exit-code mapping and the
+    /// inner exception for debugging.
+    /// </summary>
+    private static FatalProtocolException WrapContext(string packageId, string nugetApiUrl, HttpRequestException e) =>
+        new(string.Format(Resources.Exceptions_NuGet_PackageMetadata_ReadFailed, packageId, nugetApiUrl, e.Message), e);
+
     // No API key is threaded in here: the repository is built without credentials, so no key could
     // reach the server, and the read endpoints nuget.org exposes need no authentication. The public
     // methods still take a non-empty key so the read and write paths share one shape; this private
@@ -285,9 +323,17 @@ public class PackageVersionService : IPackageVersionService
         if (metadataResource is null)
             throw new InvalidOperationException($"Package metadata resource is not available for this source: {nugetApiUrl}");
 
-        IEnumerable<IPackageSearchMetadata> results =
-            await metadataResource.GetMetadataAsync(packageId, includePrerelease: includePreReleaseVersions, includeUnlisted: true,
+        IEnumerable<IPackageSearchMetadata> results;
+
+        try
+        {
+            results = await metadataResource.GetMetadataAsync(packageId, includePrerelease: includePreReleaseVersions, includeUnlisted: true,
                 cacheContext, NullLogger.Instance, cancellationToken).ConfigureAwait(false);
+        }
+        catch (HttpRequestException e)
+        {
+            throw WrapContext(packageId, nugetApiUrl, e);
+        }
 
         List<(NuGetVersion Version, bool IsListed)> metadata =
         [

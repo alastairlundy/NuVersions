@@ -240,6 +240,10 @@ public class CliShowCommandTests
         await Assert.That(run.ExitCode).IsEqualTo(ExitCodeHelpers.ExitFailure);
         await Assert.That(run.StdOut).IsEmpty();
         await Assert.That(Lines(run.StdErr).Length).IsEqualTo(1);
+        // The diagnostic names the package and server: a dead feed and a mistyped --server-url
+        // must stay distinguishable from a one-line "read failed" that names neither.
+        await Assert.That(run.StdErr).Contains(packageId);
+        await Assert.That(run.StdErr).Contains(server.ServiceIndexUrl);
     }
 
     [Test]

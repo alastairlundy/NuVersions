@@ -16,6 +16,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+using NuGet.Protocol.Core.Types;
 using NuGet.Versioning;
 
 namespace NuVersionsLib.Tests;
@@ -93,6 +94,36 @@ public class PackageDeprecationServiceTests
         await Assert.That(verdict.AlternatePackageId).IsEqualTo("Demo.Package.Next");
         // The range passes through in its original string form, not a normalized rewrite.
         await Assert.That(verdict.AlternatePackageRange).IsEqualTo("[2.0.0, )");
+    }
+
+    [Test]
+    public async Task RegistrationReadFailure_ThrowsTheWrappedFeedSideDiagnostic_WithContext()
+    {
+        using MockNuGetV3Server server = MockNuGetV3Server.Start();
+        string packageId = NewPackageId();
+        server.AddPackage(packageId, ("1.0.0", true));
+        server.FailRegistration();
+
+        PackageDeprecationService service = new();
+
+        try
+        {
+            await service.CheckPackageVersionsDeprecationAsync(
+                server.ServiceIndexUrl, ApiKey, packageId, [V("1.0.0")], CancellationToken.None);
+
+            throw new InvalidOperationException(
+                "The deprecation read unexpectedly succeeded against a failing feed.");
+        }
+        catch (FatalProtocolException e)
+        {
+            // The wrapper keeps the package and server in the printed message and the HTTP
+            // failure as the inner exception, so the CLI's one-line diagnostic is diagnosable
+            // on its own while the recognized-family exit-code mapping is unchanged.
+            await Assert.That(e.Message).Contains(packageId);
+            await Assert.That(e.Message).Contains(server.ServiceIndexUrl);
+            await Assert.That(e.Message).Contains("deprecation");
+            await Assert.That(e.InnerException).IsNotNull();
+        }
     }
 
     [Test]

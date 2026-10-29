@@ -35,7 +35,11 @@ public class PackageDeprecationService : IPackageDeprecationService
     /// prints.
     /// </remarks>
     /// <param name="nugetApiUrl">The URL of the NuGet API.</param>
-    /// <param name="nugetApiKey">The API key for authentication against the NuGet API.</param>
+    /// <param name="nugetApiKey">
+    /// The API key for authentication against the NuGet API. Shape-compatibility only: this read
+    /// never uses or transmits the key, exactly like the other read paths (see
+    /// <see cref="IPackageVersionService"/>); making keys meaningful on reads is tracked in TODO.md.
+    /// </param>
     /// <param name="packageId">The identifier of the package to check.</param>
     /// <param name="packageVersions">The specific versions of the package to read deprecation metadata for.</param>
     /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
@@ -54,41 +58,61 @@ public class PackageDeprecationService : IPackageDeprecationService
 
         using SourceCacheContext cacheContext = new SourceCacheContext();
 
-        PackageMetadataResource? metadataResource =
-            await repoInfo.GetResourceAsync<PackageMetadataResource>(cancellationToken).ConfigureAwait(false);
-
-        if (metadataResource is null)
-            throw new InvalidOperationException(string.Format(Resources.Exceptions_NuGet_FindResources_FindPackageMetadata_Unavailable, nugetApiUrl));
-
-        // Same fetch shape as the listing read: prerelease and unlisted versions both included, so
-        // the version set the CLI already enumerates maps 1:1 onto the served metadata.
-        IEnumerable<IPackageSearchMetadata> results =
-            await metadataResource.GetMetadataAsync(packageId, includePrerelease: true, includeUnlisted: true,
-                cacheContext, NullLogger.Instance, cancellationToken).ConfigureAwait(false);
-
-        Dictionary<NuGetVersion, PackageDeprecationInfo?> metadataByVersion = new();
-
-        foreach (IPackageSearchMetadata metadata in results)
+        try
         {
-            PackageDeprecationMetadata? deprecationMetadata =
-                await metadata.GetDeprecationMetadataAsync().ConfigureAwait(false);
+            PackageMetadataResource? metadataResource =
+                await repoInfo.GetResourceAsync<PackageMetadataResource>(cancellationToken).ConfigureAwait(false);
 
-            metadataByVersion[metadata.Identity.Version] = MapDeprecationMetadata(deprecationMetadata);
+            if (metadataResource is null)
+                throw new InvalidOperationException(string.Format(Resources.Exceptions_NuGet_FindResources_FindPackageMetadata_Unavailable, nugetApiUrl));
+
+            // Same fetch shape as the listing read: prerelease and unlisted versions both included, so
+            // the version set the CLI already enumerates maps 1:1 onto the served metadata.
+            IEnumerable<IPackageSearchMetadata> results =
+                await metadataResource.GetMetadataAsync(packageId, includePrerelease: true, includeUnlisted: true,
+                    cacheContext, NullLogger.Instance, cancellationToken).ConfigureAwait(false);
+
+            Dictionary<NuGetVersion, PackageDeprecationInfo?> metadataByVersion = new();
+
+            foreach (IPackageSearchMetadata metadata in results)
+            {
+                // GetDeprecationMetadataAsync has no token-taking overload, so between iterations this
+                // check is the only cancellation observation the deprecation pass has after its
+                // GetMetadataAsync: without it, Ctrl-C during the pass is ignored until the run
+                // completes instead of surfacing the documented interrupted shape (exit 130).
+                cancellationToken.ThrowIfCancellationRequested();
+
+                PackageDeprecationMetadata? deprecationMetadata =
+                    await metadata.GetDeprecationMetadataAsync().ConfigureAwait(false);
+
+                metadataByVersion[metadata.Identity.Version] = MapDeprecationMetadata(deprecationMetadata);
+            }
+
+            Dictionary<NuGetVersion, PackageDeprecationInfo?> output = new(capacity: packageVersions.Count);
+
+            foreach (NuGetVersion version in packageVersions.Distinct())
+            {
+                // A requested version the served metadata carries no deprecation object for is not
+                // deprecated — the same verdict as a feed that never serves the fact at all, which
+                // is what keeps the absent and no-fact cases indistinguishable.
+                output[version] = metadataByVersion.TryGetValue(version, out PackageDeprecationInfo? deprecationInfo)
+                    ? deprecationInfo
+                    : null;
+            }
+
+            return output;
         }
-
-        Dictionary<NuGetVersion, PackageDeprecationInfo?> output = new(capacity: packageVersions.Count);
-
-        foreach (NuGetVersion version in packageVersions.Distinct())
+        catch (HttpRequestException e)
         {
-            // A requested version the served metadata carries no deprecation object for is not
-            // deprecated — the same verdict as a feed that never serves the fact at all, which
-            // is what keeps the absent and no-fact cases indistinguishable.
-            output[version] = metadataByVersion.TryGetValue(version, out PackageDeprecationInfo? deprecationInfo)
-                ? deprecationInfo
-                : null;
+            // A bare HttpRequestException's message carries only the HTTP status, not what was being
+            // read; this command-boundary context names the package and server so the CLI's one-line
+            // diagnostic (the printed exception.Message) is diagnosable on its own. Throwing
+            // FatalProtocolException (NuGetProtocolException's concrete subclass) keeps the existing
+            // recognized-family mapping (exit 1) and the inner exception for debugging.
+            throw new FatalProtocolException(
+                string.Format(Resources.Exceptions_NuGet_PackageMetadata_DeprecationReadFailed,
+                    packageId, nugetApiUrl, e.Message), e);
         }
-
-        return output;
     }
 
     /// <summary>
