@@ -27,9 +27,10 @@ namespace NuVersionsLib;
 /// </summary>
 /// <remarks>
 /// <para>
-/// This backend passes the API key on the process command line, which is visible in process listings.
-/// This is inherent to the <c>dotnet nuget delete</c> command and cannot be avoided.
-/// Consider using the HTTP-based <see cref="HttpPackageUnlistService"/> where possible for improved security.
+/// The API key is passed to <c>dotnet nuget delete</c> through the child process's
+/// <c>NUGET_API_KEY</c> environment variable, not the command line: the NuGet CLI reads that
+/// variable when <c>--api-key</c> is omitted, and a command-line key would be visible in
+/// process listings.
 /// </para>
 /// <para>
 /// Every shared run rule (argument validation, package-existence check, listed-state check,
@@ -159,10 +160,16 @@ public partial class NetSdkPackageUnlistService : IPackageUnlistService
                 "nuget", "delete",
                 packageId.ToLowerInvariant(),
                 version.ToNormalizedString(),
-                "--api-key", apiKey,
                 "--source", nugetApiUrl,
                 "--non-interactive",
             ],
+            // dotnet nuget delete reads NUGET_API_KEY when --api-key is omitted, so the key
+            // travels in the child's environment, not on the process-command-visible command line.
+            // Ordinal: environment-variable names are case-sensitive on Unix.
+            EnvironmentVariables = new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["NUGET_API_KEY"] = apiKey,
+            },
         };
 
         try

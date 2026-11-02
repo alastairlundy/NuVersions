@@ -47,6 +47,12 @@ internal sealed class FakeScriptedProcessInvoker : IProcessInvoker
     public int BufferedCallCount { get; private set; }
 
     /// <summary>
+    /// Every <see cref="ProcessConfiguration"/> passed to <see cref="ExecuteBufferedAsync"/>,
+    /// in dispatch order, regardless of whether a result was scripted for it.
+    /// </summary>
+    public List<ProcessConfiguration> Runs { get; } = [];
+
+    /// <summary>
     /// The process runs that reached the invoker with no scripted result, in arrival order.
     /// </summary>
     /// <remarks>
@@ -66,6 +72,7 @@ internal sealed class FakeScriptedProcessInvoker : IProcessInvoker
         ProcessExitConfiguration? processExitConfiguration, CancellationToken cancellationToken = default)
     {
         BufferedCallCount++;
+        Runs.Add(processConfiguration);
 
         if (_exceptions.Count > 0)
         {

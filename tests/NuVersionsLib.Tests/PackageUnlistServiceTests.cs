@@ -428,6 +428,27 @@ public class PackageUnlistServiceTests
         await Assert.That(invoker.BufferedCallCount).IsEqualTo(1);
     }
 
+    [Test]
+    public async Task SdkDispatch_PassesTheApiKeyViaNUGET_API_KEYInTheChildEnvironment_NotOnTheCommandLine()
+    {
+        // dotnet nuget delete reads the key from NUGET_API_KEY when --api-key is omitted, so the
+        // key travels in the child's environment instead of a process listing-visible command line.
+        FakeScriptedProcessInvoker invoker = new();
+        invoker.Enqueue(MakeResult(0, "", ""));
+
+        await UnlistSingleSdkAsync(invoker);
+
+        ProcessConfiguration configuration = invoker.Runs.Single();
+
+        await Assert.That(configuration.ArgumentList).DoesNotContain("--api-key");
+        await Assert.That(configuration.ArgumentList)
+            .DoesNotContain(arg => arg.Contains(ApiKey, StringComparison.Ordinal));
+        await Assert.That(configuration.EnvironmentVariables.Keys)
+            .IsEquivalentTo(["NUGET_API_KEY"]);
+        await Assert.That(configuration.EnvironmentVariables["NUGET_API_KEY"])
+            .IsEqualTo(ApiKey);
+    }
+
     private static NuGetVersion V(string version) => NuGetVersion.Parse(version);
 
     private static PackageVersionListingInfo Listed(NuGetVersion version) => new()

@@ -24,6 +24,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- The `sdk` backend passes the NuGet API key to `dotnet nuget delete` through the child process's
+  `NUGET_API_KEY` environment variable instead of the command line. The NuGet CLI reads that variable
+  when `--api-key` is omitted, so the key is no longer visible in process listings.
 - `--unlist-all` now treats stable `0.x` (Major == 0) versions as pre-release: they are enumerated
   and unlisted alongside label-carrying pre-release versions, so a package published only as `0.x`
   is no longer skipped by a run that printed nothing and exited `0`.
