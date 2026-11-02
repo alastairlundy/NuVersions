@@ -60,47 +60,12 @@ public class PackageDeprecationService : IPackageDeprecationService
 
         try
         {
-            PackageMetadataResource? metadataResource =
-                await repoInfo.GetResourceAsync<PackageMetadataResource>(cancellationToken).ConfigureAwait(false);
+            Dictionary<NuGetVersion, PackageDeprecationInfo?> metadataByVersion =
+                await ReadServedDeprecationMetadataAsync(repoInfo, nugetApiUrl, packageId, cacheContext,
+                        cancellationToken)
+                    .ConfigureAwait(false);
 
-            if (metadataResource is null)
-                throw new InvalidOperationException(string.Format(Resources.Exceptions_NuGet_FindResources_FindPackageMetadata_Unavailable, nugetApiUrl));
-
-            // Same fetch shape as the listing read: prerelease and unlisted versions both included, so
-            // the version set the CLI already enumerates maps 1:1 onto the served metadata.
-            IEnumerable<IPackageSearchMetadata> results =
-                await metadataResource.GetMetadataAsync(packageId, includePrerelease: true, includeUnlisted: true,
-                    cacheContext, NullLogger.Instance, cancellationToken).ConfigureAwait(false);
-
-            Dictionary<NuGetVersion, PackageDeprecationInfo?> metadataByVersion = new();
-
-            foreach (IPackageSearchMetadata metadata in results)
-            {
-                // GetDeprecationMetadataAsync has no token-taking overload, so between iterations this
-                // check is the only cancellation observation the deprecation pass has after its
-                // GetMetadataAsync: without it, Ctrl-C during the pass is ignored until the run
-                // completes instead of surfacing the documented interrupted shape (exit 130).
-                cancellationToken.ThrowIfCancellationRequested();
-
-                PackageDeprecationMetadata? deprecationMetadata =
-                    await metadata.GetDeprecationMetadataAsync().ConfigureAwait(false);
-
-                metadataByVersion[metadata.Identity.Version] = MapDeprecationMetadata(deprecationMetadata);
-            }
-
-            Dictionary<NuGetVersion, PackageDeprecationInfo?> output = new(capacity: packageVersions.Count);
-
-            foreach (NuGetVersion version in packageVersions.Distinct())
-            {
-                // A requested version the served metadata carries no deprecation object for is not
-                // deprecated — the same verdict as a feed that never serves the fact at all, which
-                // is what keeps the absent and no-fact cases indistinguishable.
-                output[version] = metadataByVersion.TryGetValue(version, out PackageDeprecationInfo? deprecationInfo)
-                    ? deprecationInfo
-                    : null;
-            }
-
-            return output;
+            return DeprecationVerdicts(packageVersions, metadataByVersion);
         }
         catch (HttpRequestException e)
         {
@@ -113,6 +78,69 @@ public class PackageDeprecationService : IPackageDeprecationService
                 string.Format(Resources.Exceptions_NuGet_PackageMetadata_DeprecationReadFailed,
                     packageId, nugetApiUrl, e.Message), e);
         }
+    }
+
+    /// <summary>
+    /// Reads the server's served deprecation metadata for every version of <paramref name="packageId"/>,
+    /// mapped onto <see cref="PackageDeprecationInfo"/>, through the package metadata resource of
+    /// <paramref name="repoInfo"/>. Prerelease and unlisted versions are both requested, so the version
+    /// set the CLI already enumerates maps 1:1 onto the served metadata.
+    /// </summary>
+    /// <remarks>
+    /// The per-iteration cancellation check is the only cancellation observation this read has after
+    /// its metadata fetch: <c>GetDeprecationMetadataAsync</c> has no token-taking overload, so without
+    /// it Ctrl-C during the fetch loop is ignored until the run completes instead of surfacing the
+    /// documented interrupted shape (exit 130).
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">The package metadata resource is unavailable for this source.</exception>
+    private async Task<Dictionary<NuGetVersion, PackageDeprecationInfo?>> ReadServedDeprecationMetadataAsync(
+        SourceRepository repoInfo, string nugetApiUrl, string packageId, SourceCacheContext cacheContext,
+        CancellationToken cancellationToken)
+    {
+        PackageMetadataResource? metadataResource =
+            await repoInfo.GetResourceAsync<PackageMetadataResource>(cancellationToken).ConfigureAwait(false);
+
+        if (metadataResource is null)
+            throw new InvalidOperationException(string.Format(Resources.Exceptions_NuGet_FindResources_FindPackageMetadata_Unavailable,
+                nugetApiUrl));
+
+        Dictionary<NuGetVersion, PackageDeprecationInfo?> metadataByVersion = new();
+
+        foreach (IPackageSearchMetadata metadata in
+                 await metadataResource.GetMetadataAsync(packageId, includePrerelease: true, includeUnlisted: true,
+                     cacheContext, NullLogger.Instance, cancellationToken).ConfigureAwait(false))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            PackageDeprecationMetadata? deprecationMetadata =
+                await metadata.GetDeprecationMetadataAsync().ConfigureAwait(false);
+
+            metadataByVersion[metadata.Identity.Version] = MapDeprecationMetadata(deprecationMetadata);
+        }
+
+        return metadataByVersion;
+    }
+
+    /// <summary>
+    /// Reads one version's deprecation verdict from the served metadata: a version the server serves
+    /// no deprecation object for is not deprecated, the same verdict as a feed that never serves the
+    /// fact at all — which is what keeps the absent and no-fact cases indistinguishable beyond the
+    /// enumerated metadata.
+    /// </summary>
+    private static Dictionary<NuGetVersion, PackageDeprecationInfo?> DeprecationVerdicts(
+        IList<NuGetVersion> packageVersions,
+        IReadOnlyDictionary<NuGetVersion, PackageDeprecationInfo?> metadataByVersion)
+    {
+        Dictionary<NuGetVersion, PackageDeprecationInfo?> output = new(capacity: packageVersions.Count);
+
+        foreach (NuGetVersion version in packageVersions.Distinct())
+        {
+            output[version] = metadataByVersion.TryGetValue(version, out PackageDeprecationInfo? deprecationInfo)
+                ? deprecationInfo
+                : null;
+        }
+
+        return output;
     }
 
     /// <summary>
