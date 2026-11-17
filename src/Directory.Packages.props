@@ -12,16 +12,16 @@
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
   <ItemGroup>
-    <PackageVersion Include="CliInvoke.Core" Version="3.1.0" />
-    <PackageVersion Include="CliInvoke" Version="3.1.0" />
+    <PackageVersion Include="CliInvoke.Core" Version="3.1.1" />
+    <PackageVersion Include="CliInvoke" Version="3.1.1" />
     <PackageVersion Include="DotMake.CommandLine" Version="3.7.0" />
-    <PackageVersion Include="Meziantou.Analyzer" Version="3.0.321" />
-    <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.14" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.14" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.14" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.14" />
+    <PackageVersion Include="Meziantou.Analyzer" Version="3.0.339" />
+    <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.15" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.15" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.15" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.15" />
     <PackageVersion Include="NuGet.Protocol" Version="8.0.0" />
     <PackageVersion Include="Polyfill" PrivateAssets="all" Version="11.4.5" />
-    <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="10.0.14" />
+    <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="10.0.15" />
   </ItemGroup>
 </Project>
