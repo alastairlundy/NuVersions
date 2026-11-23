@@ -27,7 +27,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - The `sdk` backend passes the NuGet API key to `dotnet nuget delete` through the child process's
   `NUGET_API_KEY` environment variable instead of the command line. The NuGet CLI reads that variable
   when `--api-key` is omitted, so the key is no longer visible in process listings.
-- `--unlist-all` now treats stable `0.x` (Major == 0) versions as pre-release: they are enumerated
+- `--unlist-all` now treats stable `0.x` (Major == 0) versions as pre-release. They are enumerated
   and unlisted alongside label-carrying pre-release versions, so a package published only as `0.x`
   is no longer skipped by a run that printed nothing and exited `0`.
 
@@ -35,7 +35,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - `--include-zero-major`. Including stable `0.x` versions is now part of the pre-release definition
   itself (semver reserves the whole `0.x` range for initial development), so there is no flag left
-  to opt in — or out — of it.
+  to opt in or out of.
 
 ### Fixed
 
@@ -59,7 +59,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `nuversions`. The single command is now a hierarchy: `nuversions unlist` (prior delist
   behavior) and `nuversions show`. The old package id will be deprecated on NuGet.org pointing
   at the new one.
-- The unlist status vocabulary now matches nuget.org's own wording: the outcome formerly rendered
+- The unlist status vocabulary now matches nuget.org's own wording. The outcome formerly rendered
   `delisted`/`already-delisted` is `unlisted`/`already-unlisted`, and dry-run buckets render
   `would-unlist`. Everything about the run is otherwise identical: same statuses for
   `not-on-server`, `failed`, `rate-limited`, `not-attempted`, same exit codes, same NDJSON shape.
@@ -91,14 +91,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   command line the parser rejects, `2` a validation failure the CLI detects itself, `3`
   rate-limited, `4` cancelled, `130` Ctrl-C. The four `return -1` paths are gone.
 - Six-RID release binaries for `win-x64`, `win-arm64`, `linux-x64`, `linux-arm64`, `osx-x64`,
-  `osx-arm64`, attached to GitHub Releases beside the `dotnet tool` package. Self-contained
-  single-file, each with a SHA-256 file plus a combined `sha256.txt`. The RID binaries run the HTTP
+  `osx-arm64`, attached to GitHub Releases beside the `dotnet tool` package. Each is self-contained
+  and single-file, with a SHA-256 checksum file plus a combined `sha256.txt`. The RID binaries run the HTTP
   backend with no .NET installed.
 - `DelistOptions`, which resolves option precedence (`--option` then `PRERELEASEDELIST_*` then
   `NUGET_*` then default) and validates per mode, so dry-run skips the API-key check.
 - A test suite: unit tests over the pure logic, handler stubs for the HTTP backend and composing
   services, and an end-to-end suite driving the CLI against an in-process mock NuGet V3 server. It
-  pins exit codes `0`, `1`, `2`, `3` and `130`, proves dry runs send no delete, and confirms the
+  pins exit codes `0`, `1`, `2`, `3`, and `130`, proves dry runs send no delete, and confirms the
   API key reaches the wire but neither stream.
 
 ### Changed
@@ -107,10 +107,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   but PreReleaseDelist never invokes a runner, so the vulnerable code path is unreachable.
 - Rate limiting fails fast: dispatching stops, results so far are reported with the rest marked
   `not-attempted`, and the process exits `3`. No retry.
-- Results, summaries and dry-run plans go to stdout; errors and diagnostics go to stderr. The API
+- Results, summaries, and dry-run plans go to stdout; errors and diagnostics go to stderr. The API
   key never reaches either stream.
-- Both backends share one per-version delete path behind a single seam, with
-  `DelistPlanning.Partition` composed in front of it and cross-cutting behaviour installed as
+- Both backends share one per-version delete path, with
+  `DelistPlanning.Partition` called before it and cross-cutting behaviour installed as
   decorators.
 - `--non-interactive` lines render `Version=<normalized> Status=<kebab-case>` from a closed
   vocabulary (`delisted`, `already-delisted`, `not-on-server`, `rate-limited`, `failed`,
@@ -122,8 +122,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   errors, style checks at build, NuGet audit. `GeneratePackageOnBuild` is replaced by an explicit
   `dotnet pack`, so a local `dotnet build` no longer drops a `.nupkg`.
 - Packaging tags corrected, README packed once from the repo root, and README/CHANGELOG rewritten
-  for the new flags, exit codes and both distribution channels.
-- Publish gates pack and push on the test suite, and builds the RID assets from a green tree only.
+  for the new flags, exit codes, and both distribution channels.
+- Publish gates pack and push on the test suite and build the RID assets only after tests pass.
 - Dependabot points at `/src` where it finds the projects, covers `github-actions` too, groups NuGet
   minor/patch bumps, and runs weekly with a 14-day version cooldown. Security updates stay
   immediate.

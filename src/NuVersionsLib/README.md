@@ -19,7 +19,7 @@ To use `NuVersionsLib` in your project, you can add it as a project reference or
 
 ### PackageVersionService
 
-Used to query package versions and their listing state from a NuGet feed.
+This service queries package versions and their listing state from a NuGet feed.
 
 ```csharp
 using NuVersionsLib;
@@ -45,7 +45,7 @@ await foreach (PackageVersionListingInfo info in versionService.EnumerateAllPack
 
 ### PackageUnlistService
 
-Used to unlist package versions. It requires an `IPackageVersionService`, an `IPackageAvailabilityDetector`, and an `IHttpClientFactory`.
+This service unlists package versions. It requires an `IPackageVersionService`, an `IPackageAvailabilityDetector`, and an `IHttpClientFactory`.
 
 ```csharp
 using NuVersionsLib;

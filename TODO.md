@@ -15,8 +15,8 @@ without re-deriving the reasoning.
 
 ### Motivation
 
-The read paths never send a credential, and today they cannot: the repository is built
-from a bare URL, so there is no channel for a key to reach the server.
+The read paths never send a credential, and today they cannot. The repository is built
+from a URL with no credentials, so there is no channel for a key to reach the server.
 
 ```csharp
 // src/NuVersionsLib/PackageVersionService.cs
@@ -31,7 +31,7 @@ makes the same call independently and would have to move in lockstep.
 
 This is deliberate, not an oversight, and it is correct for nuget.org. See the
 non-goals below. But it leaves **private feeds that require authentication for reads**
-unsupported: Azure Artifacts, GitHub Packages, ProGet and Artifactory all sit behind
+unsupported: Azure Artifacts, GitHub Packages, ProGet, and Artifactory all sit behind
 credentials on their metadata endpoints, and their rate limiters commonly key on the
 authenticated identity rather than on the IP address.
 
@@ -58,7 +58,7 @@ Nor is it a change to the write path. The write path already carries the credent
 
 ### Design sketch
 
-Build the `PackageSource` with credentials rather than using the bare-string overload:
+Build the `PackageSource` with credentials rather than using the overload that takes only a string:
 
 ```csharp
 PackageSource source = new(nugetApiUrl)
@@ -76,7 +76,7 @@ SourceRepository repo = Repository.Factory.GetCoreV3(source);
 Note the credential transport differs by feed type. `PackageSourceCredential` yields
 Basic/NTLM. `X-NuGet-ApiKey` is a nuget.org `PackagePublish` mechanism that private feeds
 do not expect, and in NuGet.Protocol the only API-key path is `PackageUpdateResource`,
-which covers push and delete, not reads. The two mechanisms may have to coexist: the
+which covers push and delete, not reads. The two mechanisms may have to coexist. The
 HTTP unlist backend keeps `X-NuGet-ApiKey`, while a private-feed read would use Basic.
 
 ### Open decisions
@@ -140,14 +140,14 @@ HTTP unlist backend keeps `X-NuGet-ApiKey`, while a private-feed read would use 
 
 The unlist limit is 250 per hour per API key on nuget.org, and there is no client-side
 knob for it. When a run hits it, the server answers 429 and the run already behaves
-correctly: the offending version becomes `rate-limited` and every remaining version
+correctly. The offending version becomes `rate-limited` and every remaining version
 becomes `not-attempted` (`PackageUnlistService.cs:180-182` and the fail-fast loop in
 `UnlistRun.ExecuteAsync`).
 
 The gap is only in what the user is told. Possible improvements:
 
-- Read the server's `Retry-After` hint on the 429 and print it, so the run can say when it
-  will be possible to continue.
+- Read the server's `Retry-After` hint on the 429 and print it, so the output states when
+  continuing becomes possible.
 - Offer a resume option for the `not-attempted` versions, so a long run does not have
   to be reconstructed by hand from the JSON output.
 
@@ -166,8 +166,8 @@ subject of this entry's second half, stays out of scope.
 A maintainer unlisting a broken or vulnerable release also usually wants to deprecate the
 version, so consumers get the *reason* (`legacy`, `critical-bugs`, `other`), an alternate
 package, and a message via `dotnet list package --deprecated`. Deprecation cannot be set
-programmatically: unlike unlisting it has no documented endpoint in the NuGet Server API,
-NuGet.Protocol only reads deprecation metadata (verify: `PackageUpdateResource` in
+programmatically. Unlike unlisting, it has no documented endpoint in the NuGet Server API,
+NuGet.Protocol only reads deprecation metadata (verify that `PackageUpdateResource` in
 NuGet/NuGet.Client contains push/delete logic only, and `PackageDeprecationMetadata` exists
 only on the read side), and `dotnet nuget` has no
 deprecate verb (the command list: push, delete, locals, sources, verify, trust, sign, why).
@@ -199,17 +199,17 @@ case at the metadata level.
    fields", README-pinned. This feature would knowingly break that sentence; bump the major
    and document the new field, or gate behind a flag?
 3. **Scope of the read.** Deprecation is per version; `show` already enumerates all versions,
-   so the natural seam is the same loop. Verify whether `PackageSearchMetadata` (search
+   so the deprecation read can reuse that loop. Verify whether `PackageSearchMetadata` (search
    resource) carries per-version deprecation, or whether the per-version registration catalog
    page is needed instead (more requests; respects nuget.org's IP-keyed read limits).
 
 ### Risks and constraints
 
 - NuGet.Protocol's deprecation read is a Newtonsoft.Json reflection path
-  (`PackageSearchMetadata`). Confirm it does not add trim-surface warnings beyond what
+  (`PackageSearchMetadata`). Confirm it does not add trim warnings beyond what
   NuGet.Protocol already contributes.
 - The status vocabulary in the README contract tables must not gain a deprecation word from
-  this feature: deprecation is metadata, not an outcome state.
+  this feature. Deprecation is metadata, not an outcome state.
 
 ### Acceptance criteria
 

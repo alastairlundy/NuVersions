@@ -21,7 +21,7 @@ Three reasons it was deliberately not built:
 
 **Positive**
 
-- `show`'s output contract stays closed data and stays tabulable in the README.
+- `show`'s output contract stays closed data and can still be listed in README tables.
 - The 1.0 contract stops growing before freeze.
 
 **Negative**
@@ -35,11 +35,11 @@ Three reasons it was deliberately not built:
 
 ## Alternatives considered
 
-- **Advisory reporting in both output modes** - rejected: open-ended data breaks the closed vocabulary and the text-line layout.
-- **Advisory reporting in JSON only** - rejected: the NDJSON schema is a published fixed three-field contract; widening it for data that does not influence `unlist` decisions buys little, and the text-mode user still sees nothing.
-- **A TODO.md deferred entry instead** - rejected: the TODO header frames entries as future work, which miscommunicates a rejection as a backlog item.
+- **Advisory reporting in both output modes.** Rejected because open-ended data breaks the closed vocabulary and the text-line layout.
+- **Advisory reporting in JSON only.** Rejected because the NDJSON schema is a published fixed three-field contract; widening it for data that does not influence `unlist` decisions buys little, and the text-mode user still sees nothing.
+- **A TODO.md deferred entry instead.** Rejected because the TODO header frames entries as future work, which miscommunicates a rejection as a backlog item.
 
 ## References
 
 - [NuGet Client SDK](https://learn.microsoft.com/en-us/nuget/reference/nuget-client-sdk): `IPackageSearchMetadata` carries both deprecation and vulnerability data; the read-side source rejected here.
-- `dotnet list package --vulnerable`: the existing consumer-side advisory surface.
+- `dotnet list package --vulnerable`: the existing way for consumers to see advisories.

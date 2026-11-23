@@ -1,8 +1,8 @@
 # Security Policy
-This information is provided on an informational basis with forward-looking statements, and is not a guarantee of future support.
+This page is informational and includes forward-looking statements. It is not a guarantee of future support.
 
 ### Currently Supported Versions
-Versions that are currently supported with Bug Fixes and/or Security Fixes.
+Versions that currently receive bug fixes and/or security fixes.
 
 | Version series | Supported with Bug Fixes | Supported with Security Fixes |
 |--| --|--|
@@ -10,11 +10,11 @@ Versions that are currently supported with Bug Fixes and/or Security Fixes.
 
 ## Reporting a Security Vulnerability
 
-To report a security vulnerability please privately report a Security Vulnerability in the [Security tab](https://github.com/alastairlundy/nuversions/security) on this project within GitHub.
-Please ensure you provide all the details regarding the vulnerability. I will try to reply to your report within 2-3 Business Days acknowledging receipt of it.
+To report a security vulnerability, open a private report in the [Security tab](https://github.com/alastairlundy/nuversions/security) of this repository on GitHub.
+Please provide all the details of the vulnerability. I will try to reply to your report within 2-3 business days to acknowledge receipt.
 
-I will then investigate the issue further and decide whether or not to accept the vulnerability. I will then inform you whether I accept the vulnerability or not.
+I will then investigate the issue and decide whether to accept the vulnerability. I will inform you of the outcome.
 
-If the vulnerability is accepted please do not publish the details of the vulnerability until at least 2-3 Business Days after the updates patching the security vulnerability have been released.
+If I accept the vulnerability, please do not publish its details until at least 2-3 business days after the updates that patch it have been released.
 
-If the vulnerability is rejected please do not refer to it as a vulnerability and do not publish private correspondence without prior written permission.
+If I reject the vulnerability, please do not refer to it as a vulnerability and do not publish private correspondence without prior written permission.

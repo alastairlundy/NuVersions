@@ -17,7 +17,7 @@ contract words.
 ## Unlist planning
 
 Deciding which versions need unlisting versus are already unlisted
-(existence check, listed-state partition, skip logic). Sits in front of
+(existence check, listed-state partition, skip logic). It runs before
 each implementation's unlist mechanism.
 
 ## Unlist plan
