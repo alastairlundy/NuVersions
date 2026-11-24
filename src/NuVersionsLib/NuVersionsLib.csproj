@@ -5,7 +5,6 @@
         <TargetFramework>net10.0</TargetFramework>
         <IsPackable>false</IsPackable>
         <PackageLicenseExpression>LGPL-3.0+</PackageLicenseExpression>
-        <PolyArgumentExceptions>true</PolyArgumentExceptions>
         <PackageId>NuVersionsLib</PackageId>
         <Title>NuVersionsLib</Title>
         <Authors>Alastair Lundy</Authors>
@@ -34,7 +33,6 @@
         </PackageReference>
       <PackageReference Include="Microsoft.Extensions.Http" />
       <PackageReference Include="NuGet.Protocol" />
-        <PackageReference Include="Polyfill" PrivateAssets="all"/>
     </ItemGroup>
 
     <ItemGroup>

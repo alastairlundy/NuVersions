@@ -108,9 +108,10 @@ because env fallbacks are read at construction.
   TreatWarningsAsErrors", but no props/csproj actually sets `TreatWarningsAsErrors` or
   `EnforceCodeStyleInBuild`. Verify before relying on audit/style warnings to fail a build.
 - Central package management: versions only in the `Directory.Packages.props` files, never in
-  csproj. The transitive pin `System.Security.Cryptography.Pkcs` 8.0.2 must stay in **both**
-  `src/` and `tests/` `Directory.Packages.props`. The nearest props file wins per project,
-  so removing one pin re-exposes the audited version at build of that tree only.
+  csproj. The transitive pin `System.Security.Cryptography.Pkcs` must stay in **both**
+  `src/` and `tests/` `Directory.Packages.props` (currently 11.0.0). The nearest props file
+  wins per project, so removing one pin re-exposes the audited version at build of that
+  tree only.
 - The CPM + audit pin combo means a NuGet.Protocol bump should re-check that pin.
 - NuGet.Protocol is **not trimming or Native AOT safe**. Several of its code paths the CLI
   exercises (service index parsing, repository signature resources, plugin serialization) are
