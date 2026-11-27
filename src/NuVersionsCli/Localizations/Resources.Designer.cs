@@ -177,7 +177,7 @@ namespace NuVersionsCli.Localizations {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to A deprecated version has a custom deprecation message; rerun with --output json for the full deprecation record..
+        ///   Looks up a localized string similar to A deprecated version has a custom deprecation message; rerun with --output json --verbose for the full deprecation record..
         /// </summary>
         internal static string Hints_Show_FullDeprecationJson {
             get {

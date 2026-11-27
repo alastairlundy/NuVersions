@@ -22,7 +22,7 @@
 ## Changes since 0.4.0
 
 ### Added
-- `unlist` reports why an attempt failed. Failed and rate-limited outcomes append a trailing `FailureType=` field to their text lines and gain `failureType` plus `failureMessage` keys in `--output json`, from a closed five-member vocabulary (`auth-failed`, `server-error`, `unavailable`, `rate-limited`, `unknown`), with one attributed line of verbatim detail on stderr per failure.
+- `unlist` reports why an attempt failed. Failed and rate-limited outcomes append a trailing `FailureType=` field to their text lines and gain `failureType` plus `failureMessage` keys in `--output json`, from a closed five-member vocabulary (`auth-failed`, `server-error`, `unavailable`, `rate-limited`, `unknown`), with one attributed stderr entry of verbatim detail per failure; the detail value is capped at 2000 characters by default.
 - `--verbose`, declared by both subcommands, lifts every truncation cap on either stream, so bounded text prints in full. Output formats and exit codes are unchanged.
 
 ### Changed

@@ -80,6 +80,16 @@ internal sealed class FakeScriptedHttpTransportHandler : HttpMessageHandler
     public void ScriptFault(string path, Exception exception)
         => _responses[path] = exception;
 
+    /// <summary>
+    /// Scripts response headers that succeed, followed by a body read that throws
+    /// <paramref name="exception"/>. This models a connection failing after the status line arrives.
+    /// </summary>
+    public void ScriptBodyFault(string path, HttpStatusCode statusCode, Exception exception)
+        => _responses[path] = new HttpResponseMessage(statusCode)
+        {
+            Content = new FaultingHttpContent(exception)
+        };
+
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,
         CancellationToken cancellationToken)
     {
@@ -103,6 +113,23 @@ internal sealed class FakeScriptedHttpTransportHandler : HttpMessageHandler
             throw exception;
         }
 
+        if (scripted is HttpResponseMessage response)
+        {
+            return Task.FromResult(response);
+        }
+
         return Task.FromResult(new HttpResponseMessage((HttpStatusCode)scripted));
+    }
+
+    private sealed class FaultingHttpContent(Exception exception) : HttpContent
+    {
+        protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context)
+            => throw exception;
+
+        protected override bool TryComputeLength(out long length)
+        {
+            length = 0;
+            return false;
+        }
     }
 }

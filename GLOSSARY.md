@@ -66,8 +66,9 @@ The tool-owned closed word naming why one version's unlist attempt
 failed, the analogue of a deprecation reason. NuVersions defines the
 vocabulary itself: the members are *auth-failed*, *server-error*,
 *unavailable*, *rate-limited*, and *unknown*, and unclassifiable causes
-report *unknown*. A verbatim detail may accompany the type, but the type
-is never a server word and never a status word.
+report *unknown*. A verbatim detail may accompany the type. The type is
+tool-owned rather than a server word, and it never replaces or determines
+the version's status.
 
 ## Dry run
 

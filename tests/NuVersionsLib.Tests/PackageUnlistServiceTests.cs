@@ -104,6 +104,37 @@ public class PackageUnlistServiceTests
     }
 
     [Test]
+    public async Task FailFast_RateLimitBodyReadFaultStillStopsTheRun()
+    {
+        using LoopbackServiceIndexServer server = LoopbackServiceIndexServer.Start();
+
+        NuGetVersion first = V("1.0.0");
+        NuGetVersion second = V("1.0.1");
+        Dictionary<NuGetVersion, PackageVersionListingInfo> listingInfo = new()
+        {
+            [first] = Listed(first),
+            [second] = Listed(second)
+        };
+
+        FakeScriptedHttpTransportHandler handler = new();
+        handler.ScriptBodyFault(PublishPath(first), HttpStatusCode.TooManyRequests,
+            new HttpRequestException("scripted body fault"));
+        HttpPackageUnlistService service =
+            CreateHttpService(listingInfo, packageExists: true, new FakeHttpClientFactory(handler));
+
+        List<PackageVersionOutcome> outcomes =
+            await CollectAsync(service, server.ServiceIndexUrl, [first, second]);
+
+        await AssertNoUnscriptedRequestAsync(handler);
+        await Assert.That(outcomes.Count).IsEqualTo(2);
+        await Assert.That(outcomes[0].Status).IsEqualTo(PackageVersionStatus.RateLimited);
+        await Assert.That(outcomes[0].FailureType).IsEqualTo(PackageVersionFailureType.RateLimited);
+        await Assert.That(outcomes[0].Detail).IsEqualTo("HTTP 429 Too Many Requests");
+        await Assert.That(outcomes[1].Status).IsEqualTo(PackageVersionStatus.NotAttempted);
+        await Assert.That(handler.DispatchCount).IsEqualTo(1);
+    }
+
+    [Test]
     public async Task BucketMerge_AlreadyUnlistedAndNotOnServer_YieldOutcomesWithoutAnyDispatch()
     {
         NuGetVersion firstUnlisted = V("1.0.1");
@@ -366,7 +397,20 @@ public class PackageUnlistServiceTests
     }
 
     [Test]
-    public async Task SdkStatusMapping_WithAStandalone429_YieldsRateLimited()
+    public async Task SdkStatusMapping_WithNoOutput_UsesTheExitCodeAsDetail()
+    {
+        FakeScriptedProcessInvoker invoker = new();
+        invoker.Enqueue(MakeResult(17, string.Empty, string.Empty));
+
+        PackageVersionOutcome outcome = await UnlistSingleSdkAsync(invoker);
+
+        await Assert.That(outcome.Status).IsEqualTo(PackageVersionStatus.Failed);
+        await Assert.That(outcome.FailureType).IsEqualTo(PackageVersionFailureType.Unknown);
+        await Assert.That(outcome.Detail).IsEqualTo("dotnet nuget delete exited with code 17.");
+    }
+
+    [Test]
+    public async Task SdkStatusMapping_WithHttp429Status_YieldsRateLimited()
     {
         FakeScriptedProcessInvoker invoker = new();
         invoker.Enqueue(MakeResult(1, "",

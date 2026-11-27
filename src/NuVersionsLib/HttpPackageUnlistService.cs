@@ -16,6 +16,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+using System.Net;
 using NuVersionsLib.Internal;
 
 namespace NuVersionsLib;
@@ -121,7 +122,7 @@ public class HttpPackageUnlistService : IPackageUnlistService
         }
     }
 
-#pragma warning disable MA0051 // Deliberately one linear flow: classification belongs inline in this delegate, not in a helper.
+#pragma warning disable MA0051 // Deliberately one linear transport flow; small pure classifiers live below.
     /// <summary>
     /// Unlists a single package version via the NuGet HTTP DELETE endpoint.
     /// </summary>
@@ -134,15 +135,19 @@ public class HttpPackageUnlistService : IPackageUnlistService
     /// <remarks>
     /// <para>
     /// Failures are classified here, in place: 401/403 report <see cref="PackageVersionFailureType.AuthFailed"/>,
-    /// 5xx reports <see cref="PackageVersionFailureType.ServerError"/>, a caught transport fault reports
-    /// <see cref="PackageVersionFailureType.Unavailable"/>, and any other non-success reports
-    /// <see cref="PackageVersionFailureType.Unknown"/>. A 429 keeps its <see cref="PackageVersionStatus.RateLimited"/>
-    /// status and additionally carries <see cref="PackageVersionFailureType.RateLimited"/>.
+    /// 5xx reports <see cref="PackageVersionFailureType.ServerError"/>, a caught transport fault without a
+    /// status code reports <see cref="PackageVersionFailureType.Unavailable"/>, and any other non-success
+    /// reports <see cref="PackageVersionFailureType.Unknown"/>. A 429 keeps its
+    /// <see cref="PackageVersionStatus.RateLimited"/> status and additionally carries
+    /// <see cref="PackageVersionFailureType.RateLimited"/>. An <see cref="HttpRequestException"/> that carries
+    /// a status code is classified by that code as well.
     /// </para>
     /// <para>
-    /// Every Failed and RateLimited outcome carries a Detail composed raw and verbatim from the response's status
-    /// line (code plus reason phrase when present) and body text, untruncated at this boundary; any cut happens
-    /// only at render time.
+    /// Every Failed and RateLimited outcome carries a Detail. Normally it is composed raw and verbatim
+    /// from the response's status line (code plus reason phrase when present) and body text, untruncated
+    /// at this boundary; if the body cannot be read, the status line alone is retained so classification
+    /// and fail-fast behavior do not depend on a complete body. Caught faults carry the exception message.
+    /// Any cut happens only at render time.
     /// </para>
     /// </remarks>
     private async ValueTask<PackageVersionOutcome> UnlistVersionAsync(
@@ -171,14 +176,27 @@ public class HttpPackageUnlistService : IPackageUnlistService
 
             HttpClient client = _clientFactory.CreateClient();
 
-            client.DefaultRequestHeaders.Add(NugetApiKeyHeaderName, [apiKey]);
+            try
+            {
+                client.DefaultRequestHeaders.Add(NugetApiKeyHeaderName, [apiKey]);
+            }
+            catch (Exception exception) when (exception is FormatException or ArgumentException)
+            {
+                // Invalid header values are local credential errors, not transport failures: no
+                // request has reached the server, so do not report the server as unavailable.
+                return new PackageVersionOutcome(packageId, version, PackageVersionStatus.Failed,
+                    PackageVersionFailureType.AuthFailed, exception.Message);
+            }
+
             client.BaseAddress = new Uri(publishUrl.AbsoluteUri.TrimEnd('/') + "/");
             client.Timeout = TimeSpan.FromMinutes(2);
 
             string relativeUrl = $"{packageId}/{version.ToNormalizedString()}";
 
+            using HttpRequestMessage request = new(HttpMethod.Delete, relativeUrl);
             using HttpResponseMessage response =
-                await client.DeleteAsync(relativeUrl, cancellationToken).ConfigureAwait(false);
+                await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
+                    .ConfigureAwait(false);
 
             if (response.IsSuccessStatusCode)
             {
@@ -190,44 +208,65 @@ public class HttpPackageUnlistService : IPackageUnlistService
                 return new PackageVersionOutcome(packageId, version, PackageVersionStatus.AlreadyUnlisted);
             }
 
-            // Everything from here down closes as Failed or RateLimited, and both statuses must carry a
-            // Detail: the response's status line plus its raw body text, verbatim and uncut (no scanning,
-            // no redaction of the API key - truncation happens only at render time).
-            string body =
-                await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-
+            // Classify from the headers before reading the body. A server may send a complete
+            // status line and then fail or truncate the body; that must not turn a received 429
+            // into a generic failure and defeat the shared run's fail-fast rule.
             string statusLine = response.ReasonPhrase is { Length: > 0 } reasonPhrase
                 ? $"HTTP {(int)response.StatusCode} {reasonPhrase}"
                 : $"HTTP {(int)response.StatusCode}";
+
+            PackageVersionStatus status = response.StatusCode == HttpStatusCode.TooManyRequests
+                ? PackageVersionStatus.RateLimited
+                : PackageVersionStatus.Failed;
+
+            PackageVersionFailureType failureType = ClassifyStatusCode(response.StatusCode);
+
+            string body;
+
+            try
+            {
+                body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception exception) when (UnlistRun.ConvertsToFailed(exception, cancellationToken))
+            {
+                return new PackageVersionOutcome(packageId, version, status, failureType, statusLine);
+            }
 
             string detail = body.Length > 0
                 ? statusLine + Environment.NewLine + body
                 : statusLine;
 
-            if ((int)response.StatusCode == 429)
-            {
-                return new PackageVersionOutcome(packageId, version, PackageVersionStatus.RateLimited,
-                    PackageVersionFailureType.RateLimited, detail);
-            }
-
-            PackageVersionFailureType failureType = (int)response.StatusCode switch
-            {
-                401 or 403 => PackageVersionFailureType.AuthFailed,
-                >= 500 and < 600 => PackageVersionFailureType.ServerError,
-                _ => PackageVersionFailureType.Unknown,
-            };
-
-            return new PackageVersionOutcome(packageId, version, PackageVersionStatus.Failed,
-                failureType, detail);
+            return new PackageVersionOutcome(packageId, version, status, failureType, detail);
         }
         catch (Exception exception) when (UnlistRun.ConvertsToFailed(exception, cancellationToken))
         {
-            // Server-side faults become a Failed outcome classified as Unavailable, carrying the raw
-            // exception message as its Detail (there is no response to quote); the caller-cancellation
-            // rule lives in UnlistRun.ConvertsToFailed.
-            return new PackageVersionOutcome(packageId, version, PackageVersionStatus.Failed,
-                PackageVersionFailureType.Unavailable, exception.Message);
+            return CreateExceptionOutcome(packageId, version, exception);
         }
     }
 #pragma warning restore MA0051
+
+    private static PackageVersionFailureType ClassifyStatusCode(HttpStatusCode statusCode) =>
+        (int)statusCode switch
+        {
+            401 or 403 => PackageVersionFailureType.AuthFailed,
+            >= 500 and < 600 => PackageVersionFailureType.ServerError,
+            429 => PackageVersionFailureType.RateLimited,
+            _ => PackageVersionFailureType.Unknown,
+        };
+
+    private static PackageVersionOutcome CreateExceptionOutcome(string packageId, NuGetVersion version,
+        Exception exception)
+    {
+        HttpStatusCode? statusCode = (exception as HttpRequestException)?.StatusCode;
+
+        PackageVersionStatus status = statusCode == HttpStatusCode.TooManyRequests
+            ? PackageVersionStatus.RateLimited
+            : PackageVersionStatus.Failed;
+
+        PackageVersionFailureType failureType = statusCode is null
+            ? PackageVersionFailureType.Unavailable
+            : ClassifyStatusCode(statusCode.Value);
+
+        return new PackageVersionOutcome(packageId, version, status, failureType, exception.Message);
+    }
 }

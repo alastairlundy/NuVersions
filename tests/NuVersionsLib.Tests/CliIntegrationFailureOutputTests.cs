@@ -112,7 +112,26 @@ public class CliIntegrationFailureOutputTests
     }
 
     [Test]
-    public async Task StderrDetailLine_IsCappedAtTwoThousandCharactersWithTheMarker_ByDefault()
+    public async Task MixedOutcomes_OnlyTheFailedVersionGetsAnAttributedStderrDetail()
+    {
+        using MockNuGetV3Server server = MockNuGetV3Server.Start();
+        string packageId = NewPackageId("FailureStderrFilter");
+        server.AddPackage(packageId, ("1.0.0", true));
+        server.SetDeleteResponseStatus("1.0.0", 401);
+
+        CommandRun run = await CliIntegrationHarness.RunAsync(
+            RealRunArgs(server, packageId, [], "1.0.0", "9.9.9"));
+
+        string[] errorLines = Lines(run.StdErr);
+        await Assert.That(errorLines.Length).IsEqualTo(1);
+        await Assert.That(errorLines[0])
+            .Contains($"Failure detail for package '{packageId}' version 1.0.0:");
+        await Assert.That(run.StdErr).DoesNotContain("9.9.9");
+        await Assert.That(run.ExitCode).IsEqualTo(ExitCodeHelpers.ExitFailure);
+    }
+
+    [Test]
+    public async Task StderrDetailValue_IsCappedAtTwoThousandCharactersWithTheMarker_ByDefault()
     {
         using MockNuGetV3Server server = MockNuGetV3Server.Start();
         string packageId = NewPackageId("FailureCap");

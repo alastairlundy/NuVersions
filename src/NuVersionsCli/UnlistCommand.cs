@@ -207,7 +207,7 @@ public class UnlistCommand
 
     /// <summary>
     /// Sends the unlist requests through the composing service, renders every outcome, writes one
-    /// attributed detail line to stderr per failed or rate-limited outcome, and returns the merged
+    /// attributed detail entry to stderr per failed or rate-limited outcome, and returns the merged
     /// exit code.
     /// </summary>
     private static async Task<int> RunUnlistAsync(UnlistOptions options, IPackageUnlistService unlistService,
@@ -248,10 +248,11 @@ public class UnlistCommand
     }
 
     /// <summary>
-    /// The stderr companion to the stdout rendering: one attributed line per failed or
+    /// The stderr companion to the stdout rendering: one attributed detail entry per failed or
     /// rate-limited outcome — the localized prefix naming the package and version, then the
     /// verbatim detail bounded at the stderr cap with the marker, unbounded under
-    /// <c>--verbose</c>. Only presentation lives here: the caller's exit code is untouched.
+    /// <c>--verbose</c>. Embedded newlines in the detail are preserved. Only presentation lives here:
+    /// the caller's exit code is untouched.
     /// </summary>
     private static async Task WriteFailureDetailsAsync(IReadOnlyList<PackageVersionOutcome> outcomes,
         bool verbose)
@@ -262,7 +263,7 @@ public class UnlistCommand
                 continue;
 
             // The outcome model guarantees those two statuses carry a Detail; the empty fallback
-            // still renders one attributed line if that invariant is ever broken.
+            // still renders one attributed entry if that invariant is ever broken.
             string detail = TruncationHelpers.TruncateForStderr(outcome.Detail ?? string.Empty, verbose);
             string prefix = string.Format(CultureInfo.InvariantCulture, Resources.Diagnostics_Unlist_FailureDetail,
                 outcome.PackageId, outcome.Version.ToNormalizedString());

@@ -11,8 +11,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `unlist` reports why an attempt failed. Failed and rate-limited outcomes append
   `FailureType=<type>` to their text lines and gain `failureType` plus `failureMessage` keys in
   `--output json`, from a closed five-member vocabulary (`auth-failed`, `server-error`,
-  `unavailable`, `rate-limited`, `unknown`). Each such version also prints one attributed line of
-  verbatim detail on stderr, bounded at 2000 characters by default.
+  `unavailable`, `rate-limited`, `unknown`). Each such version also prints one attributed stderr entry of
+  verbatim detail, with the detail value bounded at 2000 characters by default.
 - `--verbose`, declared by both subcommands, lifts every truncation cap on either stream, so
   bounded text prints in full. Output formats and exit codes are unchanged.
 

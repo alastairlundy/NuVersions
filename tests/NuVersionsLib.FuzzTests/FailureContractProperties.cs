@@ -36,10 +36,10 @@ namespace NuVersionsLib.FuzzTests;
 /// </remarks>
 public class FailureContractProperties
 {
-    /// <summary>The stderr cap: the published T008 value this property pins.</summary>
+    /// <summary>The stderr detail-value cap documented in README's Truncation section.</summary>
     private const int StderrCap = 2000;
 
-    /// <summary>The stdout cap: the published T008 value this property pins.</summary>
+    /// <summary>The stdout message cap documented in README's Truncation section.</summary>
     private const int StdoutCap = 5000;
 
     /// <summary>The literal a cut appends, and only a cut.</summary>

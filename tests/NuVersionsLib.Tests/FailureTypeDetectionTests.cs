@@ -76,11 +76,19 @@ public class FailureTypeDetectionTests
         [
             ("auth", "The API key was rejected: unauthorized.", PackageVersionStatus.Failed,
                 PackageVersionFailureType.AuthFailed),
+            ("auth-status", "Response status code does not indicate success: 401 (Unauthorized).",
+                PackageVersionStatus.Failed, PackageVersionFailureType.AuthFailed),
+            ("auth-status-period", "Response status code does not indicate success: 403.",
+                PackageVersionStatus.Failed, PackageVersionFailureType.AuthFailed),
             ("server", "The server returned a service error.", PackageVersionStatus.Failed,
+                PackageVersionFailureType.ServerError),
+            ("server-status", "HTTP 503 Service Unavailable.", PackageVersionStatus.Failed,
                 PackageVersionFailureType.ServerError),
             ("unavailable", "Unable to connect to the remote server: connection refused.",
                 PackageVersionStatus.Failed, PackageVersionFailureType.Unavailable),
             ("rate-limit", "The server throttled the request; retry later.",
+                PackageVersionStatus.RateLimited, PackageVersionFailureType.RateLimited),
+            ("rate-limit-status", "The remote server returned an error: (429) Too Many Requests.",
                 PackageVersionStatus.RateLimited, PackageVersionFailureType.RateLimited),
             ("unknown", "Something went wrong on the server.", PackageVersionStatus.Failed,
                 PackageVersionFailureType.Unknown),
@@ -119,6 +127,76 @@ public class FailureTypeDetectionTests
         await Assert.That(outcome.Status).IsEqualTo(PackageVersionStatus.Failed);
         await Assert.That(outcome.FailureType).IsEqualTo(PackageVersionFailureType.Unavailable);
         await Assert.That(outcome.Detail ?? string.Empty).Contains("scripted transport failure");
+    }
+
+    [Test]
+    [Arguments(HttpStatusCode.TooManyRequests, PackageVersionStatus.RateLimited,
+        PackageVersionFailureType.RateLimited)]
+    [Arguments(HttpStatusCode.Unauthorized, PackageVersionStatus.Failed,
+        PackageVersionFailureType.AuthFailed)]
+    [Arguments(HttpStatusCode.ServiceUnavailable, PackageVersionStatus.Failed,
+        PackageVersionFailureType.ServerError)]
+    public async Task HttpExceptionWithStatusCode_PreservesThatStatusClassification(
+        HttpStatusCode statusCode, PackageVersionStatus expectedStatus,
+        PackageVersionFailureType expectedType)
+    {
+        using LoopbackServiceIndexServer server = LoopbackServiceIndexServer.Start();
+
+        PackageVersionOutcome outcome = await RunHttpAsync(server,
+            handler => handler.ScriptFault(PublishPath(V("1.0.0")),
+                new HttpRequestException("scripted status fault", null, statusCode)));
+
+        await Assert.That(outcome.Status).IsEqualTo(expectedStatus);
+        await Assert.That(outcome.FailureType).IsEqualTo(expectedType);
+        await Assert.That(outcome.Detail).IsEqualTo("scripted status fault");
+    }
+
+    [Test]
+    public async Task HttpBodyReadFault_PreservesTheStatusAndFailureTypeWithStatusLineOnlyDetail()
+    {
+        using LoopbackServiceIndexServer server = LoopbackServiceIndexServer.Start();
+
+        PackageVersionOutcome outcome = await RunHttpAsync(server,
+            handler => handler.ScriptBodyFault(PublishPath(V("1.0.0")), HttpStatusCode.TooManyRequests,
+                new HttpRequestException("scripted body fault")));
+
+        await Assert.That(outcome.Status).IsEqualTo(PackageVersionStatus.RateLimited);
+        await Assert.That(outcome.FailureType).IsEqualTo(PackageVersionFailureType.RateLimited);
+        await Assert.That(outcome.Detail).IsEqualTo("HTTP 429 Too Many Requests");
+    }
+
+    [Test]
+    public async Task HttpInvalidApiKeyHeader_ProducesAuthFailureWithoutDispatch()
+    {
+        using LoopbackServiceIndexServer server = LoopbackServiceIndexServer.Start();
+
+        PackageVersionOutcome outcome = await RunHttpAsync(server, _ => { }, "invalid\napi-key",
+            expectedDispatchCount: 0);
+
+        await Assert.That(outcome.Status).IsEqualTo(PackageVersionStatus.Failed);
+        await Assert.That(outcome.FailureType).IsEqualTo(PackageVersionFailureType.AuthFailed);
+        await Assert.That(outcome.Detail ?? string.Empty).IsNotEmpty();
+    }
+
+    [Test]
+    [Arguments("Unexpected error for version 1.0.0-401.")]
+    [Arguments("Unexpected error for version 1.0.0-403.")]
+    [Arguments("Unexpected error for version 1.0.0-500.")]
+    [Arguments("Unexpected error for version 1.0.0+503.")]
+    [Arguments("Unexpected error for version 1.0.0-429.")]
+    [Arguments("Unexpected error for package Foo403.")]
+    [Arguments("Unexpected error for correlation id 12345678-502f-1234-abcdef123456.")]
+    [Arguments("Unexpected error for source http://localhost:401/v3/index.json.")]
+    [Arguments("Response status code does not indicate success for source http://localhost:401/v3/index.json.")]
+    [Arguments("Unexpected error for package Contoso.Connectivity.")]
+    [Arguments("Unexpected error for source https://network-cache.corp.local/v3/index.json.")]
+    [Arguments("Unexpected error for package Timeout.Package.")]
+    public async Task SdkNumericOrIdentifierTokensOutsideDiagnosticContexts_RemainUnknown(string output)
+    {
+        PackageVersionOutcome outcome = await RunSdkAsync(output);
+
+        await Assert.That(outcome.Status).IsEqualTo(PackageVersionStatus.Failed);
+        await Assert.That(outcome.FailureType).IsEqualTo(PackageVersionFailureType.Unknown);
     }
 
     [Test]
@@ -186,7 +264,8 @@ public class FailureTypeDetectionTests
     /// <param name="server">The loopback server serving the service index the backend resolves.</param>
     /// <param name="script">Scripts the one delete response (or fault) the handler answers with.</param>
     private static async Task<PackageVersionOutcome> RunHttpAsync(
-        LoopbackServiceIndexServer server, Action<FakeScriptedHttpTransportHandler> script)
+        LoopbackServiceIndexServer server, Action<FakeScriptedHttpTransportHandler> script,
+        string? apiKey = null, int expectedDispatchCount = 1)
     {
         NuGetVersion version = V("1.0.0");
         FakeScriptedHttpTransportHandler handler = new();
@@ -203,15 +282,15 @@ public class FailureTypeDetectionTests
         List<PackageVersionOutcome> outcomes = [];
 
         await foreach (PackageVersionOutcome outcome in service.RequestPackageUnlistingAsync(
-                           server.ServiceIndexUrl, ApiKey, PackageId, [version], CancellationToken.None))
+                           server.ServiceIndexUrl, apiKey ?? ApiKey, PackageId, [version], CancellationToken.None))
         {
             outcomes.Add(outcome);
         }
 
         // A stray dispatch would surface only as a wrong outcome, so name the request that actually
-        // went out: exactly one scripted delete, and nothing else.
+        // went out: exactly the expected number of scripted deletes, and nothing else.
         await Assert.That(handler.UnscriptedRequests).IsEmpty();
-        await Assert.That(handler.DispatchCount).IsEqualTo(1);
+        await Assert.That(handler.DispatchCount).IsEqualTo(expectedDispatchCount);
 
         return outcomes.Single();
     }

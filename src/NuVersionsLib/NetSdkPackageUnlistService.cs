@@ -157,7 +157,8 @@ public partial class NetSdkPackageUnlistService : IPackageUnlistService
     /// All other failures yield <see cref="PackageVersionStatus.Failed"/>, carrying the
     /// best-effort classified FailureType (auth failure, server error, unavailable, or
     /// unknown) and the child process's combined standard output and standard error as an
-    /// uncut Detail. If invoking the child process throws, the outcome is
+    /// uncut Detail. When the child produces no output, the Detail reports its nonzero exit code.
+    /// If invoking the child process throws, the outcome is
     /// <see cref="PackageVersionStatus.Failed"/> with
     /// <see cref="PackageVersionFailureType.Unavailable"/> and the exception message as Detail.
     /// </remarks>
@@ -199,7 +200,7 @@ public partial class NetSdkPackageUnlistService : IPackageUnlistService
                 return new PackageVersionOutcome(packageId, version, PackageVersionStatus.Unlisted);
             }
 
-            string output = $"{result.StandardOutput} {result.StandardError}";
+            string output = GetFailureOutput(result);
 
             if (LooksRateLimited(output))
             {
@@ -225,12 +226,20 @@ public partial class NetSdkPackageUnlistService : IPackageUnlistService
         }
     }
 
+    private static string GetFailureOutput(BufferedProcessResult result)
+    {
+        string output = $"{result.StandardOutput} {result.StandardError}";
+
+        return string.IsNullOrWhiteSpace(output)
+            ? $"dotnet nuget delete exited with code {result.ExitCode}."
+            : output;
+    }
+
     private static bool LooksRateLimited(string output)
     {
-        // "429" must stand alone: an unexpected error that merely echoes a version number such as
-        // "2.429.0" must not be misreported as a rate limit. Dots are excluded so version numerals
-        // and decimal times never match.
-        if (MyRegex.IsMatch(output))
+        // Numeric status codes count only in HTTP-status contexts. A package version such as
+        // 1.0.0-429, a package id, or a URL port must not trigger fail-fast.
+        if (RateLimitedStatusCodeRegex.IsMatch(output))
         {
             return true;
         }
@@ -265,10 +274,8 @@ public partial class NetSdkPackageUnlistService : IPackageUnlistService
 
     private static bool LooksAuthFailed(string output)
     {
-        // "401"/"403" must stand alone for the same reason "429" must in LooksRateLimited: an
-        // unexpected error that merely echoes a version number such as "1.401.0" must not be
-        // misreported as an authentication failure. Dots are excluded so version numerals
-        // and decimal times never match.
+        // Match 401/403 only when the output presents them as HTTP status codes. Bare digits in
+        // versions (1.0.0-401), package ids (Foo403), and URL ports are unrelated to authentication.
         if (AuthStatusCodeRegex.IsMatch(output))
         {
             return true;
@@ -281,8 +288,8 @@ public partial class NetSdkPackageUnlistService : IPackageUnlistService
 
     private static bool LooksServerError(string output)
     {
-        // Bare 5xx digits get the same standalone treatment as "429": only a code with no
-        // adjacent digits or dots (never part of a version like "1.503.0") counts.
+        // The same context rule applies to 5xx: a version such as 1.0.0-500 or a URL port must
+        // not turn an unrelated failure into a server-error classification.
         if (ServerStatusCodeRegex.IsMatch(output))
         {
             return true;
@@ -300,24 +307,40 @@ public partial class NetSdkPackageUnlistService : IPackageUnlistService
 
     private static bool LooksUnavailable(string output)
     {
-        // "connect" covers connection/connected/connecting/unable to connect.
-        return output.Contains("connect", StringComparison.OrdinalIgnoreCase)
-               || output.Contains("unable to reach", StringComparison.OrdinalIgnoreCase)
-               || output.Contains("unreachable", StringComparison.OrdinalIgnoreCase)
-               || output.Contains("service index", StringComparison.OrdinalIgnoreCase)
-               || output.Contains("no such host", StringComparison.OrdinalIgnoreCase)
-               || output.Contains("name resolution", StringComparison.OrdinalIgnoreCase)
-               || output.Contains("network", StringComparison.OrdinalIgnoreCase)
-               || output.Contains("timed out", StringComparison.OrdinalIgnoreCase)
-               || output.Contains("timeout", StringComparison.OrdinalIgnoreCase);
+        // Source URLs and hostnames are identifiers, not diagnostics. Remove them before matching
+        // narrow error phrases so a feed such as network-cache.example does not make every failure
+        // look like a transport outage.
+        string diagnosticText = UrlRegex.Replace(output, string.Empty);
+
+        return diagnosticText.Contains("unable to connect", StringComparison.OrdinalIgnoreCase)
+               || diagnosticText.Contains("could not connect", StringComparison.OrdinalIgnoreCase)
+               || diagnosticText.Contains("connection refused", StringComparison.OrdinalIgnoreCase)
+               || diagnosticText.Contains("connection reset", StringComparison.OrdinalIgnoreCase)
+               || diagnosticText.Contains("connection closed", StringComparison.OrdinalIgnoreCase)
+               || diagnosticText.Contains("unable to reach", StringComparison.OrdinalIgnoreCase)
+               || diagnosticText.Contains("host unreachable", StringComparison.OrdinalIgnoreCase)
+               || diagnosticText.Contains("network unreachable", StringComparison.OrdinalIgnoreCase)
+               || diagnosticText.Contains("server unreachable", StringComparison.OrdinalIgnoreCase)
+               || diagnosticText.Contains("is unreachable", StringComparison.OrdinalIgnoreCase)
+               || diagnosticText.Contains("unable to load the service index", StringComparison.OrdinalIgnoreCase)
+               || diagnosticText.Contains("no such host", StringComparison.OrdinalIgnoreCase)
+               || diagnosticText.Contains("name resolution", StringComparison.OrdinalIgnoreCase)
+               || diagnosticText.Contains("timed out", StringComparison.OrdinalIgnoreCase)
+               || diagnosticText.Contains("connection timeout", StringComparison.OrdinalIgnoreCase)
+               || diagnosticText.Contains("request timed out", StringComparison.OrdinalIgnoreCase)
+               || diagnosticText.Contains("operation has timed out", StringComparison.OrdinalIgnoreCase)
+               || diagnosticText.Contains("timeout expired", StringComparison.OrdinalIgnoreCase);
     }
 
-    [GeneratedRegex("(?<![0-9.])429(?![0-9.])", RegexOptions.IgnoreCase, 3000)]
-    private static partial Regex MyRegex { get; }
+    [GeneratedRegex(@"(?:\bHTTP(?:/\d(?:\.\d)?)?[ \t]+|\bHTTP[ \t]+error[ \t]+|\(|\bstatus[ \t]+code(?:[ \t]+does[ \t]+not[ \t]+indicate[ \t]+success)?[ \t:]*)429(?=$|[)\s;,]|\.(?![0-9]))", RegexOptions.IgnoreCase, 3000)]
+    private static partial Regex RateLimitedStatusCodeRegex { get; }
 
-    [GeneratedRegex("(?<![0-9.])(?:401|403)(?![0-9.])", RegexOptions.IgnoreCase, 3000)]
+    [GeneratedRegex(@"(?:\bHTTP(?:/\d(?:\.\d)?)?[ \t]+|\bHTTP[ \t]+error[ \t]+|\(|\bstatus[ \t]+code(?:[ \t]+does[ \t]+not[ \t]+indicate[ \t]+success)?[ \t:]*)(?:401|403)(?=$|[)\s;,]|\.(?![0-9]))", RegexOptions.IgnoreCase, 3000)]
     private static partial Regex AuthStatusCodeRegex { get; }
 
-    [GeneratedRegex("(?<![0-9.])5[0-9]{2}(?![0-9.])", RegexOptions.IgnoreCase, 3000)]
+    [GeneratedRegex(@"(?:\bHTTP(?:/\d(?:\.\d)?)?[ \t]+|\bHTTP[ \t]+error[ \t]+|\(|\bstatus[ \t]+code(?:[ \t]+does[ \t]+not[ \t]+indicate[ \t]+success)?[ \t:]*)5[0-9]{2}(?=$|[)\s;,]|\.(?![0-9]))", RegexOptions.IgnoreCase, 3000)]
     private static partial Regex ServerStatusCodeRegex { get; }
+
+    [GeneratedRegex(@"https?://\S+", RegexOptions.IgnoreCase, 1000)]
+    private static partial Regex UrlRegex { get; }
 }

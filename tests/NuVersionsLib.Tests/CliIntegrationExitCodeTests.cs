@@ -16,6 +16,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using NuGet.Versioning;
@@ -185,6 +186,10 @@ public class CliIntegrationExitCodeTests
         await Assert.That(run.ExitCode).IsEqualTo(ExitCodeHelpers.ExitRateLimited);
         await Assert.That(run.StdOut).Contains("Version=1.0.0 Status=rate-limited FailureType=rate-limited");
         await Assert.That(run.StdOut).Contains("Version=1.0.1 Status=not-attempted");
+        string[] errorLines = run.StdErr.Split(["\r\n", "\n"], StringSplitOptions.RemoveEmptyEntries);
+        await Assert.That(errorLines.Length).IsEqualTo(1);
+        await Assert.That(errorLines[0]).Contains("version 1.0.0:");
+        await Assert.That(run.StdErr).DoesNotContain("version 1.0.1:");
         // Server-side proof of fail-fast: exactly one delete reached the server, so the second
         // version was reported not-attempted because nothing was dispatched for it.
         await Assert.That(server.DeleteRequests.Count).IsEqualTo(1);
@@ -246,6 +251,41 @@ public class CliIntegrationExitCodeTests
         await Assert.That(run.ExitCode is 0 or 1 or 2).IsTrue();
         await Assert.That(run.StdOut).Contains("Version=9.9.9 Bucket=not-on-server");
         await Assert.That(server.DeleteRequests).IsEmpty();
+    }
+
+    [Test]
+    public async Task DryRunJson_UsesTheFiveKeyShapeWithExplicitNullFailureFields()
+    {
+        using MockNuGetV3Server server = MockNuGetV3Server.Start();
+        string packageId = NewPackageId("DryRunJson");
+        server.AddPackage(packageId, ("1.0.0", true), ("1.0.1", false));
+
+        CommandRun run = await CliIntegrationHarness.RunAsync(
+            "--package-id", packageId,
+            "--server-url", server.ServiceIndexUrl,
+            "--dry-run",
+            "--output", "json",
+            "1.0.0", "1.0.1");
+
+        string[] lines = run.StdOut.Split(["\r\n", "\n"], StringSplitOptions.RemoveEmptyEntries);
+        await Assert.That(run.ExitCode).IsEqualTo(ExitCodeHelpers.ExitSuccess);
+        await Assert.That(lines.Length).IsEqualTo(2);
+        await Assert.That(server.DeleteRequests).IsEmpty();
+
+        string[] expectedStatuses = ["not-attempted", "already-unlisted"];
+
+        for (int index = 0; index < lines.Length; index++)
+        {
+            using JsonDocument document = JsonDocument.Parse(lines[index]);
+            JsonElement record = document.RootElement;
+            string fieldOrder = string.Join(",",
+                record.EnumerateObject().Select(static property => property.Name));
+
+            await Assert.That(fieldOrder).IsEqualTo("package,version,status,failureType,failureMessage");
+            await Assert.That(record.GetProperty("status").GetString()).IsEqualTo(expectedStatuses[index]);
+            await Assert.That(record.GetProperty("failureType").ValueKind).IsEqualTo(JsonValueKind.Null);
+            await Assert.That(record.GetProperty("failureMessage").ValueKind).IsEqualTo(JsonValueKind.Null);
+        }
     }
 
     [Test]

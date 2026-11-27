@@ -32,8 +32,9 @@ namespace NuVersionsLib.Models;
 /// carry both <paramref name="FailureType"/> and <paramref name="Detail"/>; every other status carries nulls for
 /// both. <paramref name="Detail"/> is raw verbatim content, uncut at this boundary - HTTP backends put the response
 /// status line plus body text there and SDK backends put the child process's combined standard output and error
-/// there. Truncation happens only at render time, never here. The new members default to null so existing two- and
-/// three-argument construction sites keep compiling unchanged.
+/// there; when no response body or process output exists, the detail is the status line, exit-code fallback, or
+/// exception message. Truncation happens only at render time, never here. The new members default to null so
+/// existing three-argument construction sites keep compiling unchanged.
 /// </remarks>
 public sealed record PackageVersionOutcome(
     string PackageId,

@@ -30,7 +30,7 @@ namespace NuVersionsCli.Helpers;
 /// </remarks>
 internal static class TruncationHelpers
 {
-    /// <summary>The stderr cap: the attributed per-failure detail line's maximum length.</summary>
+    /// <summary>The stderr cap: the failure-detail value's maximum length before the attribution prefix is added.</summary>
     internal const int StderrDetailCap = 2000;
 
     /// <summary>The stdout cap: the maximum length of the free text stdout bounds (show's deprecation message).</summary>
