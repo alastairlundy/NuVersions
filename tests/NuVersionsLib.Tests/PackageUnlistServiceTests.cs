@@ -135,6 +135,40 @@ public class PackageUnlistServiceTests
     }
 
     [Test]
+    public async Task FailFast_RateLimitBodyReadTimeoutStillStopsTheRun()
+    {
+        using LoopbackServiceIndexServer server = LoopbackServiceIndexServer.Start();
+
+        NuGetVersion first = V("1.0.0");
+        NuGetVersion second = V("1.0.1");
+        Dictionary<NuGetVersion, PackageVersionListingInfo> listingInfo = new()
+        {
+            [first] = Listed(first),
+            [second] = Listed(second)
+        };
+
+        FakeScriptedHttpTransportHandler handler = new();
+        TaskCompletionSource bodyReadStarted =
+            handler.ScriptBlockingBody(PublishPath(first), HttpStatusCode.TooManyRequests);
+        HttpPackageUnlistService service = CreateHttpService(listingInfo, packageExists: true,
+            new FakeHttpClientFactory(handler), TimeSpan.FromMilliseconds(100));
+        using CancellationTokenSource caller = new(TimeSpan.FromSeconds(10));
+
+        Task<List<PackageVersionOutcome>> collecting =
+            CollectAsync(service, server.ServiceIndexUrl, [first, second], caller.Token);
+        await bodyReadStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        List<PackageVersionOutcome> outcomes = await collecting.WaitAsync(TimeSpan.FromSeconds(5));
+
+        await AssertNoUnscriptedRequestAsync(handler);
+        await Assert.That(outcomes.Count).IsEqualTo(2);
+        await Assert.That(outcomes[0].Status).IsEqualTo(PackageVersionStatus.RateLimited);
+        await Assert.That(outcomes[0].FailureType).IsEqualTo(PackageVersionFailureType.RateLimited);
+        await Assert.That(outcomes[0].Detail).IsEqualTo("HTTP 429 Too Many Requests");
+        await Assert.That(outcomes[1].Status).IsEqualTo(PackageVersionStatus.NotAttempted);
+        await Assert.That(handler.DispatchCount).IsEqualTo(1);
+    }
+
+    [Test]
     public async Task BucketMerge_AlreadyUnlistedAndNotOnServer_YieldOutcomesWithoutAnyDispatch()
     {
         NuGetVersion firstUnlisted = V("1.0.1");
@@ -369,6 +403,30 @@ public class PackageUnlistServiceTests
     }
 
     [Test]
+    public async Task HttpStatusMapping_WhenTheCallerCancelsDuringBodyRead_LetsTheCancellationEscape()
+    {
+        using LoopbackServiceIndexServer server = LoopbackServiceIndexServer.Start();
+        FakeScriptedHttpTransportHandler handler = new();
+        NuGetVersion version = V("1.0.0");
+        TaskCompletionSource bodyReadStarted =
+            handler.ScriptBlockingBody(PublishPath(version), HttpStatusCode.TooManyRequests);
+        HttpPackageUnlistService service = CreateHttpService(
+            new Dictionary<NuGetVersion, PackageVersionListingInfo> { [version] = Listed(version) },
+            packageExists: true, new FakeHttpClientFactory(handler), TimeSpan.FromSeconds(10));
+        using CancellationTokenSource caller = new();
+
+        Task<List<PackageVersionOutcome>> collecting =
+            CollectAsync(service, server.ServiceIndexUrl, [version], caller.Token);
+        await bodyReadStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await caller.CancelAsync();
+
+        await Assert.That(async () => await collecting.WaitAsync(TimeSpan.FromSeconds(5)))
+            .Throws<OperationCanceledException>();
+        await AssertNoUnscriptedRequestAsync(handler);
+        await Assert.That(handler.DispatchCount).IsEqualTo(1);
+    }
+
+    [Test]
     public async Task HttpStatusMapping_WhenTheHandlerThrowsACancellationWithoutTheCallerCancelling_YieldsFailed()
     {
         using LoopbackServiceIndexServer server = LoopbackServiceIndexServer.Start();
@@ -511,9 +569,12 @@ public class PackageUnlistServiceTests
 
     private static HttpPackageUnlistService CreateHttpService(
         IDictionary<NuGetVersion, PackageVersionListingInfo> listingInfo, bool packageExists,
-        IHttpClientFactory clientFactory)
-        => new(new ScriptedVersionService(listingInfo),
-            new FixedAvailabilityDetector(packageExists), clientFactory);
+        IHttpClientFactory clientFactory, TimeSpan? requestTimeout = null)
+        => requestTimeout is { } timeout
+            ? new(new ScriptedVersionService(listingInfo),
+                new FixedAvailabilityDetector(packageExists), clientFactory, timeout)
+            : new(new ScriptedVersionService(listingInfo),
+                new FixedAvailabilityDetector(packageExists), clientFactory);
 
     private static NetSdkPackageUnlistService CreateSdkService(
         IDictionary<NuGetVersion, PackageVersionListingInfo> listingInfo, bool packageExists,

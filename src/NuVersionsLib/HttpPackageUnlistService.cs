@@ -45,6 +45,7 @@ public class HttpPackageUnlistService : IPackageUnlistService
     private readonly IPackageVersionService _packageVersionService;
     private readonly IPackageAvailabilityDetector _packageAvailabilityDetector;
     private readonly IHttpClientFactory _clientFactory;
+    private readonly TimeSpan _requestTimeout;
 
     /// <summary>
     /// Creates a service that sends unlist requests through the NuGet HTTP publish endpoint.
@@ -55,6 +56,13 @@ public class HttpPackageUnlistService : IPackageUnlistService
     public HttpPackageUnlistService(IPackageVersionService packageVersionService,
         IPackageAvailabilityDetector packageAvailabilityDetector,
         IHttpClientFactory clientFactory)
+        : this(packageVersionService, packageAvailabilityDetector, clientFactory, TimeSpan.FromMinutes(2))
+    {
+    }
+
+    internal HttpPackageUnlistService(IPackageVersionService packageVersionService,
+        IPackageAvailabilityDetector packageAvailabilityDetector,
+        IHttpClientFactory clientFactory, TimeSpan requestTimeout)
     {
         ArgumentNullException.ThrowIfNull(packageVersionService);
         ArgumentNullException.ThrowIfNull(packageAvailabilityDetector);
@@ -63,6 +71,7 @@ public class HttpPackageUnlistService : IPackageUnlistService
         _packageVersionService = packageVersionService;
         _packageAvailabilityDetector = packageAvailabilityDetector;
         _clientFactory = clientFactory;
+        _requestTimeout = requestTimeout;
     }
 
     /// <summary>
@@ -145,9 +154,10 @@ public class HttpPackageUnlistService : IPackageUnlistService
     /// <para>
     /// Every Failed and RateLimited outcome carries a Detail. Normally it is composed raw and verbatim
     /// from the response's status line (code plus reason phrase when present) and body text, untruncated
-    /// at this boundary; if the body cannot be read, the status line alone is retained so classification
-    /// and fail-fast behavior do not depend on a complete body. Caught faults carry the exception message.
-    /// Any cut happens only at render time.
+    /// at this boundary; if the body cannot be read or its read times out, the status line alone is
+    /// retained so classification and fail-fast behavior do not depend on a complete body. The body
+    /// read shares the request timeout and remains linked to caller cancellation, which still escapes.
+    /// Caught faults carry the exception message. Any cut happens only at render time.
     /// </para>
     /// </remarks>
     private async ValueTask<PackageVersionOutcome> UnlistVersionAsync(
@@ -189,7 +199,7 @@ public class HttpPackageUnlistService : IPackageUnlistService
             }
 
             client.BaseAddress = new Uri(publishUrl.AbsoluteUri.TrimEnd('/') + "/");
-            client.Timeout = TimeSpan.FromMinutes(2);
+            client.Timeout = _requestTimeout;
 
             string relativeUrl = $"{packageId}/{version.ToNormalizedString()}";
 
@@ -223,9 +233,15 @@ public class HttpPackageUnlistService : IPackageUnlistService
 
             string body;
 
+            // ResponseHeadersRead ends HttpClient.Timeout's coverage at the headers. Bound the body
+            // separately while keeping caller cancellation linked so it still escapes the service.
+            using CancellationTokenSource bodyReadTimeout =
+                CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            bodyReadTimeout.CancelAfter(_requestTimeout);
+
             try
             {
-                body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                body = await response.Content.ReadAsStringAsync(bodyReadTimeout.Token).ConfigureAwait(false);
             }
             catch (Exception exception) when (UnlistRun.ConvertsToFailed(exception, cancellationToken))
             {

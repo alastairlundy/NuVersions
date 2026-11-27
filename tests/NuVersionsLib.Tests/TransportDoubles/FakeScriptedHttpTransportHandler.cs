@@ -90,6 +90,21 @@ internal sealed class FakeScriptedHttpTransportHandler : HttpMessageHandler
             Content = new FaultingHttpContent(exception)
         };
 
+    /// <summary>
+    /// Scripts response headers followed by a body read that blocks until its token is cancelled.
+    /// Returns a task completed when that body read starts.
+    /// </summary>
+    public TaskCompletionSource ScriptBlockingBody(string path, HttpStatusCode statusCode)
+    {
+        TaskCompletionSource readStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        _responses[path] = new HttpResponseMessage(statusCode)
+        {
+            Content = new BlockingHttpContent(readStarted)
+        };
+
+        return readStarted;
+    }
+
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,
         CancellationToken cancellationToken)
     {
@@ -125,6 +140,25 @@ internal sealed class FakeScriptedHttpTransportHandler : HttpMessageHandler
     {
         protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context)
             => throw exception;
+
+        protected override bool TryComputeLength(out long length)
+        {
+            length = 0;
+            return false;
+        }
+    }
+
+    private sealed class BlockingHttpContent(TaskCompletionSource readStarted) : HttpContent
+    {
+        protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context)
+            => throw new NotSupportedException("The blocking body requires a cancellation token.");
+
+        protected override async Task SerializeToStreamAsync(Stream stream, TransportContext? context,
+            CancellationToken cancellationToken)
+        {
+            readStarted.TrySetResult();
+            await Task.Delay(Timeout.Infinite, cancellationToken).ConfigureAwait(false);
+        }
 
         protected override bool TryComputeLength(out long length)
         {
