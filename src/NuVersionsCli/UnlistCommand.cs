@@ -237,7 +237,9 @@ public class UnlistCommand
 
         await foreach (PackageVersionOutcome outcome in results.WithCancellation(cancellationToken).ConfigureAwait(true))
         {
-            outcomes.Add(outcome);
+            // The server may echo the submitted key in a failure body, so every stream renders the
+            // same redacted Detail. Truncation and JSON serialization happen downstream of this point.
+            outcomes.Add(ApiKeyRedactionHelpers.RedactOutcome(outcome, options.ApiKey));
             exitCode = ExitCodeHelpers.MergeExitCode(exitCode, ExitCodeHelpers.ToExitCode(outcome.Status));
         }
 

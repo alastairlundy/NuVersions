@@ -173,6 +173,74 @@ public class CliIntegrationFailureOutputTests
         await Assert.That(run.ExitCode).IsEqualTo(ExitCodeHelpers.ExitFailure);
     }
 
+    [Test]
+    public async Task FailedTextDetail_RedactsTheSubmittedApiKey()
+    {
+        using MockNuGetV3Server server = MockNuGetV3Server.Start();
+        string packageId = NewPackageId("FailureRedactionText");
+        server.AddPackage(packageId, ("1.0.0", true));
+        string body = $"Invalid API key: {CliIntegrationHarness.TestApiKey}";
+        server.SetDeleteResponseStatus("1.0.0", 401, body);
+
+        CommandRun run = await CliIntegrationHarness.RunAsync(RealRunArgs(server, packageId, [], "1.0.0"));
+
+        await Assert.That(run.ExitCode).IsEqualTo(ExitCodeHelpers.ExitFailure);
+        await Assert.That(run.StdErr).Contains("Invalid API key: [redacted]");
+        await Assert.That(run.StdErr).DoesNotContain(CliIntegrationHarness.TestApiKey);
+        await Assert.That(run.StdOut)
+            .Contains("Version=1.0.0 Status=failed FailureType=auth-failed");
+    }
+
+    [Test]
+    public async Task FailedJsonDetail_RedactsTheSubmittedApiKey()
+    {
+        using MockNuGetV3Server server = MockNuGetV3Server.Start();
+        string packageId = NewPackageId("FailureRedactionJson");
+        server.AddPackage(packageId, ("1.0.0", true));
+        string body = $"Invalid API key: {CliIntegrationHarness.TestApiKey}";
+        server.SetDeleteResponseStatus("1.0.0", 401, body);
+
+        CommandRun run = await CliIntegrationHarness.RunAsync(
+            RealRunArgs(server, packageId, ["--output", "json"], "1.0.0"));
+
+        string[] lines = Lines(run.StdOut);
+        await Assert.That(lines.Length).IsEqualTo(1);
+
+        using JsonDocument document = JsonDocument.Parse(lines[0]);
+        string failureMessage = document.RootElement.GetProperty("failureMessage").GetString() ?? string.Empty;
+
+        await Assert.That(failureMessage)
+            .IsEqualTo($"HTTP 401 Unauthorized{Environment.NewLine}Invalid API key: [redacted]");
+        await Assert.That(run.StdOut).DoesNotContain(CliIntegrationHarness.TestApiKey);
+        await Assert.That(run.ExitCode).IsEqualTo(ExitCodeHelpers.ExitFailure);
+    }
+
+    [Test]
+    public async Task VerboseJsonAndStderrDetails_RedactTheSubmittedApiKey()
+    {
+        using MockNuGetV3Server server = MockNuGetV3Server.Start();
+        string packageId = NewPackageId("FailureRedactionVerbose");
+        server.AddPackage(packageId, ("1.0.0", true));
+        string body = $"Invalid API key: {CliIntegrationHarness.TestApiKey}";
+        server.SetDeleteResponseStatus("1.0.0", 401, body);
+
+        CommandRun run = await CliIntegrationHarness.RunAsync(
+            RealRunArgs(server, packageId, ["--output", "json", "--verbose"], "1.0.0"));
+
+        string[] lines = Lines(run.StdOut);
+        await Assert.That(lines.Length).IsEqualTo(1);
+
+        using JsonDocument document = JsonDocument.Parse(lines[0]);
+        string failureMessage = document.RootElement.GetProperty("failureMessage").GetString() ?? string.Empty;
+
+        await Assert.That(failureMessage)
+            .IsEqualTo($"HTTP 401 Unauthorized{Environment.NewLine}Invalid API key: [redacted]");
+        await Assert.That(run.StdErr).Contains("Invalid API key: [redacted]");
+        await Assert.That(run.StdOut).DoesNotContain(CliIntegrationHarness.TestApiKey);
+        await Assert.That(run.StdErr).DoesNotContain(CliIntegrationHarness.TestApiKey);
+        await Assert.That(run.ExitCode).IsEqualTo(ExitCodeHelpers.ExitFailure);
+    }
+
     /// <summary>
     /// The verbatim detail a scripted 401 produces: the HTTP status line the response carries,
     /// then the scripted body.
