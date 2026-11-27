@@ -60,6 +60,15 @@ The closed result vocabulary for one version's attempt: *unlisted*,
 attempted* (stopped before dispatch). Shared by the unlisting
 implementations, CLI output, and exit codes.
 
+## Failure type
+
+The tool-owned closed word naming why one version's unlist attempt
+failed, the analogue of a deprecation reason. NuVersions defines the
+vocabulary itself: the members are *auth-failed*, *server-error*,
+*unavailable*, *rate-limited*, and *unknown*, and unclassifiable causes
+report *unknown*. A verbatim detail may accompany the type, but the type
+is never a server word and never a status word.
+
 ## Dry run
 
 A run that resolves and prints the unlist plan without sending any unlist
