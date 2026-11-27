@@ -22,13 +22,14 @@ namespace NuVersionsCli.Helpers;
 
 /// <summary>
 /// The AOT and trim-safe source-generation context for the NDJSON output contract. String
-/// serialization plus the show deprecation record are generated in serialization mode only, so
-/// the context emits UTF-8 writers and no reflection metadata; the camelCase policy shapes the
-/// deprecation subtree's keys, with no rename mappings anywhere in the contract.
+/// serialization, the unlist line record, and the show deprecation record are generated in
+/// serialization mode only, so the context emits UTF-8 writers and no reflection metadata; the
+/// camelCase policy shapes the records' keys, with no rename mappings anywhere in the contract.
 /// </summary>
 [JsonSourceGenerationOptions(GenerationMode = JsonSourceGenerationMode.Serialization,
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
 [JsonSerializable(typeof(string))]
+[JsonSerializable(typeof(UnlistVersionRecord))]
 [JsonSerializable(typeof(ShowDeprecationRecord))]
 internal sealed partial class NdjsonJsonContext : JsonSerializerContext
 {

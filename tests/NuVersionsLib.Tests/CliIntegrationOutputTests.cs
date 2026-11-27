@@ -23,7 +23,7 @@ namespace NuVersionsLib.Tests;
 
 /// <summary>
 /// The documented output formats and stream routing driven end-to-end: human grouping,
-/// <c>--non-interactive</c> kebab lines, NDJSON with a fixed three-field order, and the stdout/stderr
+/// <c>--non-interactive</c> kebab lines, NDJSON with a fixed five-field order, and the stdout/stderr
 /// split — all asserted against the in-process mock NuGet V3 server.
 /// </summary>
 [NotInParallel] // Console.SetOut/SetError are process-global; never interleave captured runs.
@@ -83,7 +83,7 @@ public class CliIntegrationOutputTests
     }
 
     [Test]
-    public async Task JsonOutputEmitsOneLinePerVersion_WithExactlyThreeFieldsInFixedOrder()
+    public async Task JsonOutputEmitsOneLinePerVersion_WithExactlyFiveFieldsInFixedOrder()
     {
         using MockNuGetV3Server server = MockNuGetV3Server.Start();
         string packageId = NewPackageId("JsonOutput");
@@ -97,23 +97,25 @@ public class CliIntegrationOutputTests
         string[] lines = Lines(run.StdOut);
 
         await Assert.That(lines.Length).IsEqualTo(3);
+        // None of these statuses carries failure data, so the failure pair is explicit JSON null.
         await Assert.That(lines[0]).IsEqualTo(
-            $"{{\"package\":\"{packageId}\",\"version\":\"1.0.1\",\"status\":\"already-unlisted\"}}");
+            $"{{\"package\":\"{packageId}\",\"version\":\"1.0.1\",\"status\":\"already-unlisted\",\"failureType\":null,\"failureMessage\":null}}");
         await Assert.That(lines[1]).IsEqualTo(
-            $"{{\"package\":\"{packageId}\",\"version\":\"9.9.9\",\"status\":\"not-on-server\"}}");
+            $"{{\"package\":\"{packageId}\",\"version\":\"9.9.9\",\"status\":\"not-on-server\",\"failureType\":null,\"failureMessage\":null}}");
         await Assert.That(lines[2]).IsEqualTo(
-            $"{{\"package\":\"{packageId}\",\"version\":\"1.0.0\",\"status\":\"unlisted\"}}");
+            $"{{\"package\":\"{packageId}\",\"version\":\"1.0.0\",\"status\":\"unlisted\",\"failureType\":null,\"failureMessage\":null}}");
 
         foreach (string line in lines)
         {
             using JsonDocument document = JsonDocument.Parse(line);
 
-            // Exactly three fields, no envelope, no array wrapper, fixed order package, version, status.
+            // Exactly five fields, no envelope, no array wrapper, fixed order package, version,
+            // status, failureType, failureMessage.
             string fieldOrder = string.Join(",",
                 document.RootElement.EnumerateObject().Select(static property => property.Name));
 
             await Assert.That(document.RootElement.ValueKind).IsEqualTo(JsonValueKind.Object);
-            await Assert.That(fieldOrder).IsEqualTo("package,version,status");
+            await Assert.That(fieldOrder).IsEqualTo("package,version,status,failureType,failureMessage");
         }
 
         await Assert.That(run.StdErr).IsEmpty();

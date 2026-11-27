@@ -280,8 +280,10 @@ public class UnlistCommand
         {
             foreach (DryRunPlanLine line in plan)
             {
+                // A dry run never dispatches an attempt, so its line carries the same five-key
+                // set as every other unlist line with the failure pair explicitly null.
                 await Console.Out.WriteLineAsync(NdjsonHelpers.ToPackageVersionLine(options.PackageId, line.Version,
-                    ToBucketStatus(line.Bucket).ToKebabCase())).ConfigureAwait(true);
+                    ToBucketStatus(line.Bucket).ToKebabCase(), failureType: null, failureMessage: null)).ConfigureAwait(true);
             }
         }
         else
@@ -328,7 +330,8 @@ public class UnlistCommand
             foreach (PackageVersionOutcome outcome in outcomes)
             {
                 await Console.Out.WriteLineAsync(
-                    NdjsonHelpers.ToPackageVersionLine(outcome.PackageId, outcome.Version, outcome.Status.ToKebabCase())).ConfigureAwait(true);
+                    NdjsonHelpers.ToPackageVersionLine(outcome.PackageId, outcome.Version, outcome.Status.ToKebabCase(),
+                        outcome.FailureType?.ToKebabCase(), outcome.Detail)).ConfigureAwait(true);
             }
 
             return;
@@ -373,10 +376,23 @@ public class UnlistCommand
         outcome.Status is PackageVersionStatus.Unlisted or PackageVersionStatus.AlreadyUnlisted;
 
     /// <summary>
-    /// The machine line shared by the human and non-interactive text formats.
+    /// The machine line shared by the human and non-interactive text formats. Only failed and
+    /// rate-limited outcomes gain the trailing <c>FailureType=</c> field; the other four statuses
+    /// render exactly as they always have.
     /// </summary>
-    private static string DescribeOutcome(PackageVersionOutcome outcome) =>
-        $"Version={outcome.Version.ToNormalizedString()} Status={outcome.Status.ToKebabCase()}";
+    private static string DescribeOutcome(PackageVersionOutcome outcome)
+    {
+        string line = $"Version={outcome.Version.ToNormalizedString()} Status={outcome.Status.ToKebabCase()}";
+
+        if (outcome.Status is not (PackageVersionStatus.Failed or PackageVersionStatus.RateLimited))
+            return line;
+
+        // The outcome model guarantees failed and rate-limited outcomes carry a type; the fallback
+        // keeps the rendered word inside the closed vocabulary if that invariant is ever broken.
+        PackageVersionFailureType failureType = outcome.FailureType ?? PackageVersionFailureType.Unknown;
+
+        return $"{line} FailureType={failureType.ToKebabCase()}";
+    }
 
     private static bool IsJsonOutput(UnlistOptions options) =>
         OutputModeHelpers.IsJson(options.OutputMode);

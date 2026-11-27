@@ -45,6 +45,9 @@
     <data name="Exceptions.VersionStatus.Unhandled" xml:space="preserve">
         <value>Unhandled {0} member: add its kebab-case spelling in {1}.</value>
     </data>
+    <data name="Exceptions.FailureType.Unhandled" xml:space="preserve">
+        <value>Unhandled {0} member: add its kebab-case spelling in {1}.</value>
+    </data>
     <data name="Exceptions.Versions.InvalidVersionString" xml:space="preserve">
         <value>Invalid version string: {0}</value>
     </data>

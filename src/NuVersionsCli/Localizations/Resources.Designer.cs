@@ -123,6 +123,15 @@ namespace NuVersionsCli.Localizations {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Unhandled {0} member: add its kebab-case spelling in {1}..
+        /// </summary>
+        internal static string Exceptions_FailureType_Unhandled {
+            get {
+                return ResourceManager.GetString("Exceptions.FailureType.Unhandled", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Invalid version string: {0}.
         /// </summary>
         internal static string Exceptions_Versions_InvalidVersionString {

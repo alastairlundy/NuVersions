@@ -22,31 +22,40 @@ using NuGet.Versioning;
 namespace NuVersionsCli.Helpers;
 
 /// <summary>
-/// The shared NDJSON line: exactly three fields in the fixed order package, version, status for
-/// <c>unlist</c>, and the same line plus a fourth <c>deprecation</c> field for <c>show</c> — no
-/// envelope, no array wrapper, no fields beyond those.
+/// The shared NDJSON line: exactly five fields in the fixed order package, version, status,
+/// failureType, failureMessage for <c>unlist</c>, and the same line's first three fields plus a
+/// fourth <c>deprecation</c> field for <c>show</c> — no envelope, no array wrapper, no fields
+/// beyond those.
 /// </summary>
 /// <remarks>
 /// The unlist and show commands render the same per-version object, so the serializer lives here
-/// instead of being copied into each command. The shape is part of the output contract: show's
-/// fourth field is the explicit JSON <see langword="null"/> on every not-deprecated line, so
-/// every show line carries the same key set.
+/// instead of being copied into each command. The shape is part of the output contract: unlist's
+/// two failure fields are the explicit JSON <see langword="null"/> whenever the outcome carries no
+/// failure data, and show's fourth field is the explicit JSON <see langword="null"/> on every
+/// not-deprecated line, so every line of either command carries the same key set.
 /// </remarks>
 internal static class NdjsonHelpers
 {
     /// <summary>
-    /// Renders one per-version NDJSON object with the three-field unlist shape.
+    /// Renders one per-version NDJSON object with the five-field unlist shape: <c>failureType</c>
+    /// and <c>failureMessage</c> fourth and fifth after <c>status</c>, serialized through
+    /// <see cref="NdjsonJsonContext"/> with camelCase keys, and the explicit JSON
+    /// <see langword="null"/> on both when the outcome carries no failure data.
     /// </summary>
+    /// <remarks>
+    /// <paramref name="failureMessage"/> rides verbatim and is never truncated, at any length.
+    /// </remarks>
     /// <param name="packageId">The package the version belongs to.</param>
     /// <param name="version">The version the line describes.</param>
     /// <param name="status">The already-rendered status member.</param>
-    internal static string ToPackageVersionLine(string packageId, NuGetVersion version, string status)
+    /// <param name="failureType">The already-rendered failure type, or <see langword="null"/> when the outcome carries none.</param>
+    /// <param name="failureMessage">The verbatim failure detail, or <see langword="null"/> when the outcome carries none.</param>
+    internal static string ToPackageVersionLine(string packageId, NuGetVersion version, string status,
+        string? failureType, string? failureMessage)
     {
-        string package = JsonSerializer.Serialize(packageId, NdjsonJsonContext.Default.String);
-        string normalizedVersion = JsonSerializer.Serialize(version.ToNormalizedString(), NdjsonJsonContext.Default.String);
-        string statusText = JsonSerializer.Serialize(status, NdjsonJsonContext.Default.String);
-
-        return $"{{\"package\":{package},\"version\":{normalizedVersion},\"status\":{statusText}}}";
+        return JsonSerializer.Serialize(
+            new UnlistVersionRecord(packageId, version.ToNormalizedString(), status, failureType, failureMessage),
+            NdjsonJsonContext.Default.UnlistVersionRecord);
     }
 
     /// <summary>
@@ -62,12 +71,25 @@ internal static class NdjsonHelpers
     internal static string ToPackageVersionLine(string packageId, NuGetVersion version, string status,
         PackageDeprecationInfo? deprecation)
     {
-        string line = ToPackageVersionLine(packageId, version, status);
+        string prefix = ToVersionFieldsJson(packageId, version, status);
         string deprecationJson = deprecation is null
             ? "null"
             : JsonSerializer.Serialize(ToDeprecationRecord(deprecation), NdjsonJsonContext.Default.ShowDeprecationRecord);
 
-        return $"{line[..^1]},\"deprecation\":{deprecationJson}}}";
+        return $"{prefix},\"deprecation\":{deprecationJson}}}";
+    }
+
+    /// <summary>
+    /// The line's first three fields as an open JSON object fragment — no closing brace — for the
+    /// show overload to append its fourth field to.
+    /// </summary>
+    private static string ToVersionFieldsJson(string packageId, NuGetVersion version, string status)
+    {
+        string package = JsonSerializer.Serialize(packageId, NdjsonJsonContext.Default.String);
+        string normalizedVersion = JsonSerializer.Serialize(version.ToNormalizedString(), NdjsonJsonContext.Default.String);
+        string statusText = JsonSerializer.Serialize(status, NdjsonJsonContext.Default.String);
+
+        return $"{{\"package\":{package},\"version\":{normalizedVersion},\"status\":{statusText}";
     }
 
     /// <summary>

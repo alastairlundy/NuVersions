@@ -99,7 +99,7 @@ public class CliIntegrationExitCodeTests
             RealRunArgs(server, packageId, "1.0.0"));
 
         await Assert.That(run.ExitCode).IsEqualTo(ExitCodeHelpers.ExitFailure);
-        await Assert.That(run.StdOut).Contains("Version=1.0.0 Status=failed");
+        await Assert.That(run.StdOut).Contains("Version=1.0.0 Status=failed FailureType=server-error");
         await Assert.That(server.DeleteRequests.Count).IsEqualTo(1);
     }
 
@@ -183,7 +183,7 @@ public class CliIntegrationExitCodeTests
             RealRunArgs(server, packageId, "1.0.0", "1.0.1"));
 
         await Assert.That(run.ExitCode).IsEqualTo(ExitCodeHelpers.ExitRateLimited);
-        await Assert.That(run.StdOut).Contains("Version=1.0.0 Status=rate-limited");
+        await Assert.That(run.StdOut).Contains("Version=1.0.0 Status=rate-limited FailureType=rate-limited");
         await Assert.That(run.StdOut).Contains("Version=1.0.1 Status=not-attempted");
         // Server-side proof of fail-fast: exactly one delete reached the server, so the second
         // version was reported not-attempted because nothing was dispatched for it.
