@@ -45,6 +45,9 @@
     <data name="Exceptions.VersionStatus.Unhandled" xml:space="preserve">
         <value>Unhandled {0} member: add its kebab-case spelling in {1}.</value>
     </data>
+    <data name="Exceptions.FailureType.Unhandled" xml:space="preserve">
+        <value>Unhandled {0} member: add its kebab-case spelling in {1}.</value>
+    </data>
     <data name="Exceptions.Versions.InvalidVersionString" xml:space="preserve">
         <value>Invalid version string: {0}</value>
     </data>
@@ -52,6 +55,9 @@
         <value>Invalid output mode. Valid values are: text, JSON.</value>
     </data>
     <data name="Hints.Show.FullDeprecationJson" xml:space="preserve">
-        <value>A deprecated version has a custom deprecation message; rerun with --output json for the full deprecation record.</value>
+        <value>A deprecated version has a custom deprecation message; rerun with --output json --verbose for the full deprecation record.</value>
+    </data>
+    <data name="Diagnostics.Unlist.FailureDetail" xml:space="preserve">
+        <value>Failure detail for package '{0}' version {1}:</value>
     </data>
 </root>

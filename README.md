@@ -20,6 +20,7 @@ A CLI to show how a NuGet package's versions are listed on a NuGet server, and t
 - Distinguishes a version that is already unlisted from a version the server has never heard of, so a mistyped version string is reported as a failure rather than a silent success.
 - Preview an unlist with `--dry-run`. No delete request is sent and no API key is required.
 - Machine-readable stdout with `--output json`, plus a small documented exit-code contract for CI.
+- Reports why an unlist attempt failed, with a closed failure type in text and JSON output and the verbatim server or SDK detail on stderr; `--verbose` lifts the truncation caps so bounded text prints in full.
 - Configure NuGet API Key and Server URL via environment variables.
 
 > **Renamed from PrereleaseDelist:** the `prerelease-delist` tool is now `nuversions`, with today's unlist behaviour available as `nuversions unlist`. The environment variable prefix is now `NUVERSIONS_`, the old `NUGET_*` generic fallbacks are unchanged, and `show` is the first sibling command. See the `0.3.0` entry in the [changelog](CHANGELOG.md).
@@ -93,6 +94,7 @@ Running `nuversions` with no subcommand prints the command hierarchy.
 | `--package-id` | string           | yes      | none                                  | The ID of the package, e.g. `MyPackage`.                                                                                                                                  |
 | `--server-url` | string           | no       | `https://api.nuget.org/v3/index.json` | The NuGet server's V3 service index URL. Useful for third-party NuGet servers. Falls back to the `NUVERSIONS_NuGetServerUrl` or `NUGET_SERVER_URL` environment variables. |
 | `--output`     | `text` \| `json` | no       | `text`                                | Output format for stdout: human-readable text, or newline-delimited JSON (one object per version). `show` in text mode may also print one deprecation hint line on stderr (see [`show`](#show)).  |
+| `--verbose`    | boolean          | no       | `false`                               | Lifts both truncation caps, so bounded text prints in full and the `...` marker never appears. Output formats and exit codes are unchanged. See [Truncation](#truncation). |
 
 ### `show`
 
@@ -125,10 +127,10 @@ When a deprecated version carries a custom deprecation message, text mode finish
 line on stderr, never on stdout:
 
 ```text
-A deprecated version has a custom deprecation message; rerun with --output json for the full deprecation record.
+A deprecated version has a custom deprecation message; rerun with --output json --verbose for the full deprecation record.
 ```
 
-The message and the alternate package never render in text; `--output json` carries both.
+The message and the alternate package never render in text; `--output json` carries both, with the message bounded at 5000 characters unless `--verbose` is set (see [Truncation](#truncation)).
 
 To unlist a version, use `unlist` with that version. The `show` statuses are deliberately
 different from the `unlist` statuses: `show` describes the current state; `unlist` describes the
@@ -149,9 +151,10 @@ nuversions unlist --package-id "MyPackage" --api-key "myApiKey" "1.0.0-alpha.1" 
 | `--unlist-all`         | boolean          | No                                  | `false`                               | Unlist all pre-release versions of the package instead of the explicitly listed `versions`. Pre-release means any version with a release label (`1.0.0-beta`) **or** any stable `0.x` version (Major == 0), matching semver's initial-development range.                                                                                                                                                           |
 | `--use-strict-parsing` | boolean          | No                                  | `true`                                | When `true`, an invalid version string causes an error. When `false`, invalid version strings are silently skipped.                                                                                                                                                                                                                                                                                                 |
 | `--backend`            | `http` \| `sdk`  | No                                  | `http`                                | Which unlisting backend to use: the V3 `http` API, or the .NET SDK's package deprecation/unlist support (`sdk`).                                                                                                                                                                                                                                                                                                    |
-| `--non-interactive`    | boolean          | No                                  | `false`                               | Print one machine-friendly `Version=<version> Status=<kebab-case>` line per version on stdout and exit non-zero if any version failed. Useful in CI.                                                                                                                                                                                                                                                                |
+| `--non-interactive`    | boolean          | No                                  | `false`                               | Print one machine-friendly `Version=<version> Status=<kebab-case>` line per version on stdout, with `FailureType=<type>` appended on failed and rate-limited lines, and exit non-zero if any version failed. Useful in CI.                                                                                                                                                                                                                                                                |
 | `--dry-run`            | boolean          | No                                  | `false`                               | Print the unlist plan without sending any delete request. Works without an API key. Exits only with `0`, `1`, or `2`. See [Dry runs](#dry-runs).                                                                                                                                                                                                                                                                   |
 | `--output`             | `text` \| `json` | No                                  | `text`                                | Output format for stdout: human-readable text, or newline-delimited JSON (one object per version). stderr is unaffected in both modes.                                                                                                                                                                                                                                                                              |
+| `--verbose`           | boolean          | No                                  | `false`                               | Lifts both truncation caps, so bounded text prints in full and the `...` marker never appears. Output formats and exit codes are unchanged. See [Truncation](#truncation).                                                                                                                                                                                                                                                                                                            |
 
 \* Required either on the command line or via environment variable (see [Configuration](#configuration) below), except under `--dry-run`, where no API key is needed at all.
 
@@ -162,9 +165,11 @@ nuversions unlist --package-id "MyPackage" --api-key "myApiKey" "1.0.0-alpha.1" 
 | Mechanism                 | HTTP `DELETE` on the server's resolved PackagePublish endpoint (`X-NuGet-ApiKey` header).                                                                                                                                                                                                                                                           | One `dotnet nuget delete` process per version.                                                                                                                                                                                                                                                                                                                                   |
 | Host .NET SDK             | Not required.                                                                                                                                                                                                                                                                                                                                       | Required: the backend drives SDK tooling that packaging cannot bundle. The standalone binaries therefore can only run this backend if a .NET SDK is installed on the host; otherwise use the `dotnet tool` channel.                                                                                                                                                               |
 | API key handling          | Sent only in the HTTP request header.                                                                                                                                                                                                                                                                                                               | Passed to `dotnet nuget delete` through the child process's `NUGET_API_KEY` environment variable, which the NuGet CLI reads when `--api-key` is omitted, so the key never appears on the command line and is invisible in process listings.                                                                                        |
-| Rate-limit detection      | Authoritative, by HTTP status code (`429`).                                                                                                                                                                                                                                                                                                         | Best-effort: a non-zero exit whose stderr matches a rate-limit pattern. Wording varies between servers and SDK versions, so detection is inherently unreliable; the `429` token is matched standalone, which keeps a version number like `2.429.0` in failure output from being misread.                                                                                                         |
+| Rate-limit detection      | Authoritative, by HTTP status code (`429`).                                                                                                                                                                                                                                                                                                         | Best-effort: a non-zero exit whose output matches a rate-limit pattern. Wording varies between servers and SDK versions, so detection is inherently unreliable; numeric status codes are matched only in HTTP-status contexts, so version numbers and URL ports are not misread.                                                                                                         |
 | Distinguishing outcomes   | A `404` counts as `already-unlisted` only when the service index advertised the `PackagePublish/2.0.0` endpoint the request actually went to; a `404` from the fallback route stays `failed`.                                                                                                                                                        | Unclassifiable outcomes report `failed` rather than guessing. Server and SDK wording varies, so confidence is limited overall.                                                                                                                                                                                                                                                    |
 | Shared behavior           | Argument validation, the package-existence and listed-state checks, `--unlist-all` and `--dry-run` behavior, the fail-fast rule on rate limiting, the status vocabulary, exit codes, and `--non-interactive`/`--output` rendering are identical for both backends: differences exist only in the per-version transport.                                 | Both backends share one run body, so everything not listed above behaves identically.                                                                                                                                                                                                                                                                                    |
+
+Failure-type detection differs by backend. The `http` backend derives failure types from the status code it receives (401 and 403 as `auth-failed`, 5xx as `server-error`, 429 as `rate-limited`) and from transport faults (`unavailable`). The `sdk` backend has no status code to read, so it matches wording in the child process output instead. That matching is best-effort for every failure type. Wording varies between servers and SDK versions, so a cause the patterns do not match reports `unknown`. The [failure types](#failure-types) table carries no confidence column, and exit codes stay keyed to the version's status rather than its failure type.
 
 ### Unlist version states
 
@@ -175,8 +180,8 @@ Every `unlist` run resolves each requested version to exactly one member of a cl
 | Listed on the server (now unlisted)     | `Status=unlisted`          | `unlisted`         | 0                      |
 | On the server but already unlisted      | `Status=already-unlisted`  | `already-unlisted` | 0                      |
 | Not known to the server at all          | `Status=not-on-server`     | `not-on-server`    | 1                      |
-| Unlist attempt failed                   | `Status=failed`            | `failed`           | 1                      |
-| Server rate-limited the run             | `Status=rate-limited`      | `rate-limited`     | 3                      |
+| Unlist attempt failed                   | `Status=failed FailureType=<type>` | `failed`           | 1                      |
+| Server rate-limited the run             | `Status=rate-limited FailureType=rate-limited` | `rate-limited`     | 3                      |
 | Not attempted; the run stopped first   | `Status=not-attempted`     | `not-attempted`    | 4                      |
 
 > **Status renames:** the unlist vocabulary was `delisted`/`already-delisted` under the
@@ -184,6 +189,27 @@ Every `unlist` run resolves each requested version to exactly one member of a cl
 > nuget.org's terminology. The all-pre-release option is now `--unlist-all` (was `--delist-all`).
 
 A version the server has never heard of, a typo or a version that was never published, is reported as a failure (`not-on-server`), not as "already unlisted". Versions that do need unlisting are still processed, so one bad entry in a batch does not prevent the rest from being unlisted.
+
+### Failure types
+
+A `failed` or `rate-limited` outcome also names why the attempt failed. The name is a failure type, a closed word NuVersions defines itself rather than taking from the server, like a deprecation reason for a failed attempt. It never replaces or determines the status. Text lines append `FailureType=<type>` after `Status=...`, and `--output json` lines carry the same word as `failureType`. The other four statuses carry no type, so their lines render as before and their JSON `failureType` and `failureMessage` are JSON `null`. Exit codes stay keyed to the status rather than the type; `failed` exits `1` and `rate-limited` exits `3`.
+
+| Failure type     | Text rendering             | JSON rendering                    | What it names                                                                                             |
+|------------------|----------------------------|-----------------------------------|-----------------------------------------------------------------------------------------------------------|
+| `auth-failed`    | `FailureType=auth-failed`  | `"failureType":"auth-failed"`     | The server rejected the attempt for missing or invalid credentials (HTTP `401` or `403`).                 |
+| `server-error`   | `FailureType=server-error` | `"failureType":"server-error"`    | The server faulted while handling the request (HTTP `5xx`).                                                |
+| `unavailable`    | `FailureType=unavailable`  | `"failureType":"unavailable"`     | The server could not be reached or could not serve the request, for example a connection, DNS, or timeout fault. |
+| `rate-limited`   | `FailureType=rate-limited` | `"failureType":"rate-limited"`    | The server throttled the attempt (HTTP `429`).                                                             |
+| `unknown`        | `FailureType=unknown`      | `"failureType":"unknown"`         | The cause does not classify into any of the other families.                                               |
+
+The attempt's verbatim detail — the HTTP status line plus response body, the child process output (or its exit-code fallback), or an exception message when no response or process output exists — prints in one attributed stderr entry per `failed` or `rate-limited` version. Embedded newlines are preserved:
+
+```text
+Failure detail for package 'MyPackage' version 1.0.0-alpha.1: HTTP 401 Unauthorized
+The API key is invalid or expired.
+```
+
+The detail value is cut at 2000 characters and gets the marker `...` when it does not fit; the attribution prefix is added afterward. The JSON `failureMessage` field carries the same detail and is never truncated, at any length. See [Truncation](#truncation).
 
 ### Dry runs
 
@@ -199,7 +225,7 @@ Each requested version lands in one of three buckets, printed as `Version=<versi
 
 Exit is bucket-aware: `0` only when every requested version exists on the server, `1` when any version is `not-on-server`, and `2` when the package itself does not exist on the server. Dry runs exit only with `0`, `1`, or `2`, never `3` or `4`.
 
-A dry run does not require an API key. Delete requests are the only credential-bearing path, and a dry run sends none. With `--output json`, each plan line is a JSON object using the same closed status vocabulary. A `would-unlist` version renders as `not-attempted`, because the delete attempt is never made.
+A dry run does not require an API key. Delete requests are the only credential-bearing path, and a dry run sends none. With `--output json`, each plan line is a JSON object using the same closed status vocabulary and the same five-key set as every other `unlist` line, with both failure keys JSON `null` because a dry run dispatches no attempt. A `would-unlist` version renders as `not-attempted`, because the delete attempt is never made.
 
 ```bash
 nuversions unlist --package-id "MyPackage" --dry-run "1.0.0-alpha.1" "1.0.0-alpha.2"
@@ -212,14 +238,14 @@ Version=1.0.0-alpha.2 Bucket=already-unlisted
 
 ### JSON output
 
-`--output json` switches stdout to newline-delimited JSON (NDJSON), one object per requested version in a fixed field order, with no envelope and no array wrapper. `unlist` lines carry exactly three fields:
+`--output json` switches stdout to newline-delimited JSON (NDJSON), one object per requested version in a fixed field order, with no envelope and no array wrapper. `unlist` lines carry exactly five fields, in this order: `package`, `version`, `status`, `failureType`, `failureMessage`. Both failure keys are the explicit JSON `null` whenever the outcome carries no failure data, so every `unlist` line carries the same key set. This is the rule `show` already applies to its null deprecation field.
 
 ```json
-{"package":"MyPackage","version":"1.0.0-alpha.1","status":"unlisted"}
-{"package":"MyPackage","version":"1.0.0-alpha.2","status":"not-on-server"}
+{"package":"MyPackage","version":"1.0.0-alpha.1","status":"unlisted","failureType":null,"failureMessage":null}
+{"package":"MyPackage","version":"1.0.0-alpha.2","status":"failed","failureType":"auth-failed","failureMessage":"The API key is invalid or expired."}
 ```
 
-`show` lines carry a fourth field, `deprecation`, after `status`:
+`show` lines keep their four-field shape. They carry the same first three fields plus `deprecation`, after `status`:
 
 ```json
 {"package":"MyPackage","version":"1.0.0","status":"listed","deprecation":{"reasons":["legacy"],"message":null,"alternatePackage":null}}
@@ -229,11 +255,24 @@ Version=1.0.0-alpha.2 Bucket=already-unlisted
 - `package`: the package id exactly as supplied to the run.
 - `version`: the normalised version string.
 - `status`: a kebab-case member of the subcommand's status vocabulary in [Unlist version states](#unlist-version-states) or in [`show`](#show). `show` reports the listed/unlisted facts; `unlist` reports what its attempt did.
+- `failureType` (`unlist` only): a kebab-case member of the [failure-type vocabulary](#failure-types) on `failed` and `rate-limited` outcomes, JSON `null` on every other outcome.
+- `failureMessage` (`unlist` only): the verbatim failure detail on those same outcomes, JSON `null` otherwise. It is never truncated, at any length.
 - `deprecation` (`show` only): the explicit JSON `null` when the version is not deprecated, otherwise an object with `reasons` (the server's reason words, verbatim), `message` (the server's custom deprecation message, or `null`), and `alternatePackage` (the recommended replacement as an `id`/`range` object, or `null`). Every `show` line carries the key, so the key set never varies.
 
-The key style is mixed on purpose. The top-level words are lowercase (`package`, `version`, `status`, `deprecation`) while the deprecation subtree is camelCase (`reasons`, `message`, `alternatePackage`, `id`, `range`).
+The key style is mixed on purpose. `package`, `version`, `status`, and `deprecation` are lowercase; `failureType` and `failureMessage` are camelCase; the deprecation subtree is camelCase as well (`reasons`, `message`, `alternatePackage`, `id`, `range`).
 
 stderr is unchanged by this mode. Every error and diagnostic still prints there as human-readable text. In all modes, results, summaries, dry-run plans, and `show` listings print to stdout; errors and diagnostics print to stderr; the API key is never written to any stream. When both are set, `--output json` takes precedence over `--non-interactive` for stdout.
+
+### Truncation
+
+Two free-text values are bounded by default, so a long server message stays a predictable size in captured logs:
+
+| Stream | Bounded value                                                                              | Cap            |
+|--------|--------------------------------------------------------------------------------------------|----------------|
+| stderr | The failure-detail value in the attributed stderr entry `unlist` prints for each `failed` or `rate-limited` version | 2000 characters |
+| stdout | The `message` field of `show`'s JSON deprecation record                                    | 5000 characters |
+
+A value that fits its cap prints unchanged. A value that does not is cut at the cap and gets the literal marker `...`. `--verbose`, declared by both subcommands, lifts both caps entirely, so nothing is cut and the marker never appears. The JSON `failureMessage` field is exempt and carries the full failure detail at any length. Output formats and exit codes are unchanged.
 
 ### Exit codes
 

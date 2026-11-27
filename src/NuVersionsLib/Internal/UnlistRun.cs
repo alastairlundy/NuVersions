@@ -87,13 +87,13 @@ internal static class UnlistRun
         foreach (NuGetVersion alreadyUnlistedVersion in plan.AlreadyUnlisted)
         {
             yield return new PackageVersionOutcome(packageId, alreadyUnlistedVersion,
-                PackageVersionStatus.AlreadyUnlisted);
+                PackageVersionStatus.AlreadyUnlisted, FailureType: null, Detail: null);
         }
 
         foreach (NuGetVersion missingVersion in plan.NotOnServer)
         {
             yield return new PackageVersionOutcome(packageId, missingVersion,
-                PackageVersionStatus.NotOnServer);
+                PackageVersionStatus.NotOnServer, FailureType: null, Detail: null);
         }
 
         if (plan.ToUnlist.Count == 0)
@@ -105,7 +105,8 @@ internal static class UnlistRun
         {
             if (rateLimitStop)
             {
-                yield return new PackageVersionOutcome(packageId, version, PackageVersionStatus.NotAttempted);
+                yield return new PackageVersionOutcome(packageId, version, PackageVersionStatus.NotAttempted,
+                    FailureType: null, Detail: null);
                 continue;
             }
 

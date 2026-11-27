@@ -17,6 +17,7 @@
  */
 
 using System.ComponentModel;
+using System.Globalization;
 using Microsoft.Extensions.DependencyInjection;
 using NuGet.Versioning;
 using NuVersionsCli.Helpers;
@@ -123,6 +124,14 @@ public class UnlistCommand
     [DefaultValue(UnlistOptions.DefaultOutputMode)]
     public string OutputMode { get; set; } = UnlistOptions.DefaultOutputMode;
 
+    /// <summary>
+    /// Lifts every truncation cap on both streams: text the default mode bounds prints in full.
+    /// Output formats and exit codes are unchanged.
+    /// </summary>
+    [CliOption(Name = "--verbose", Required = false)]
+    [DefaultValue(false)]
+    public bool Verbose { get; set; } = false;
+
     public async Task<int> RunAsync()
     {
         UnlistOptions options = ResolveOptions();
@@ -150,7 +159,7 @@ public class UnlistCommand
 
             return options.DryRun
                 ? await RunDryRunAsync(options, cancellationSource.Token).ConfigureAwait(true)
-                : await RunUnlistAsync(options, unlistService, cancellationSource.Token).ConfigureAwait(true);
+                : await RunUnlistAsync(options, unlistService, Verbose, cancellationSource.Token).ConfigureAwait(true);
         }
         catch (OperationCanceledException)
         {
@@ -197,11 +206,12 @@ public class UnlistCommand
     }
 
     /// <summary>
-    /// Sends the unlist requests through the composing service, renders every outcome, and returns the
-    /// merged exit code.
+    /// Sends the unlist requests through the composing service, renders every outcome, writes one
+    /// attributed detail entry to stderr per failed or rate-limited outcome, and returns the merged
+    /// exit code.
     /// </summary>
     private static async Task<int> RunUnlistAsync(UnlistOptions options, IPackageUnlistService unlistService,
-        CancellationToken cancellationToken)
+        bool verbose, CancellationToken cancellationToken)
     {
         if (string.IsNullOrEmpty(options.ApiKey))
             throw new ArgumentNullException(paramName: nameof(options));
@@ -227,13 +237,41 @@ public class UnlistCommand
 
         await foreach (PackageVersionOutcome outcome in results.WithCancellation(cancellationToken).ConfigureAwait(true))
         {
-            outcomes.Add(outcome);
+            // The server may echo the submitted key in a failure body, so every stream renders the
+            // same redacted Detail. Truncation and JSON serialization happen downstream of this point.
+            outcomes.Add(ApiKeyRedactionHelpers.RedactOutcome(outcome, options.ApiKey));
             exitCode = ExitCodeHelpers.MergeExitCode(exitCode, ExitCodeHelpers.ToExitCode(outcome.Status));
         }
 
         await WriteResultsAsync(options, outcomes).ConfigureAwait(true);
+        await WriteFailureDetailsAsync(outcomes, verbose).ConfigureAwait(true);
 
         return exitCode;
+    }
+
+    /// <summary>
+    /// The stderr companion to the stdout rendering: one attributed detail entry per failed or
+    /// rate-limited outcome — the localized prefix naming the package and version, then the
+    /// verbatim detail bounded at the stderr cap with the marker, unbounded under
+    /// <c>--verbose</c>. Embedded newlines in the detail are preserved. Only presentation lives here:
+    /// the caller's exit code is untouched.
+    /// </summary>
+    private static async Task WriteFailureDetailsAsync(IReadOnlyList<PackageVersionOutcome> outcomes,
+        bool verbose)
+    {
+        foreach (PackageVersionOutcome outcome in outcomes)
+        {
+            if (outcome.Status is not (PackageVersionStatus.Failed or PackageVersionStatus.RateLimited))
+                continue;
+
+            // The outcome model guarantees those two statuses carry a Detail; the empty fallback
+            // still renders one attributed entry if that invariant is ever broken.
+            string detail = TruncationHelpers.TruncateForStderr(outcome.Detail ?? string.Empty, verbose);
+            string prefix = string.Format(CultureInfo.InvariantCulture, Resources.Diagnostics_Unlist_FailureDetail,
+                outcome.PackageId, outcome.Version.ToNormalizedString());
+
+            await Console.Error.WriteLineAsync($"{prefix} {detail}").ConfigureAwait(true);
+        }
     }
 
     /// <summary>
@@ -280,8 +318,10 @@ public class UnlistCommand
         {
             foreach (DryRunPlanLine line in plan)
             {
+                // A dry run never dispatches an attempt, so its line carries the same five-key
+                // set as every other unlist line with the failure pair explicitly null.
                 await Console.Out.WriteLineAsync(NdjsonHelpers.ToPackageVersionLine(options.PackageId, line.Version,
-                    ToBucketStatus(line.Bucket).ToKebabCase())).ConfigureAwait(true);
+                    ToBucketStatus(line.Bucket).ToKebabCase(), failureType: null, failureMessage: null)).ConfigureAwait(true);
             }
         }
         else
@@ -328,7 +368,8 @@ public class UnlistCommand
             foreach (PackageVersionOutcome outcome in outcomes)
             {
                 await Console.Out.WriteLineAsync(
-                    NdjsonHelpers.ToPackageVersionLine(outcome.PackageId, outcome.Version, outcome.Status.ToKebabCase())).ConfigureAwait(true);
+                    NdjsonHelpers.ToPackageVersionLine(outcome.PackageId, outcome.Version, outcome.Status.ToKebabCase(),
+                        outcome.FailureType?.ToKebabCase(), outcome.Detail)).ConfigureAwait(true);
             }
 
             return;
@@ -373,10 +414,23 @@ public class UnlistCommand
         outcome.Status is PackageVersionStatus.Unlisted or PackageVersionStatus.AlreadyUnlisted;
 
     /// <summary>
-    /// The machine line shared by the human and non-interactive text formats.
+    /// The machine line shared by the human and non-interactive text formats. Only failed and
+    /// rate-limited outcomes gain the trailing <c>FailureType=</c> field; the other four statuses
+    /// render exactly as they always have.
     /// </summary>
-    private static string DescribeOutcome(PackageVersionOutcome outcome) =>
-        $"Version={outcome.Version.ToNormalizedString()} Status={outcome.Status.ToKebabCase()}";
+    private static string DescribeOutcome(PackageVersionOutcome outcome)
+    {
+        string line = $"Version={outcome.Version.ToNormalizedString()} Status={outcome.Status.ToKebabCase()}";
+
+        if (outcome.Status is not (PackageVersionStatus.Failed or PackageVersionStatus.RateLimited))
+            return line;
+
+        // The outcome model guarantees failed and rate-limited outcomes carry a type; the fallback
+        // keeps the rendered word inside the closed vocabulary if that invariant is ever broken.
+        PackageVersionFailureType failureType = outcome.FailureType ?? PackageVersionFailureType.Unknown;
+
+        return $"{line} FailureType={failureType.ToKebabCase()}";
+    }
 
     private static bool IsJsonOutput(UnlistOptions options) =>
         OutputModeHelpers.IsJson(options.OutputMode);

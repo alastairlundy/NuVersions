@@ -4,6 +4,27 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.5.0 - 2026-11-27
+
+### Added
+
+- `unlist` reports why an attempt failed. Failed and rate-limited outcomes append
+  `FailureType=<type>` to their text lines and gain `failureType` plus `failureMessage` keys in
+  `--output json`, from a closed five-member vocabulary (`auth-failed`, `server-error`,
+  `unavailable`, `rate-limited`, `unknown`). Each such version also prints one attributed stderr entry of
+  verbatim detail, with the detail value bounded at 2000 characters by default.
+- `--verbose`, declared by both subcommands, lifts every truncation cap on either stream, so
+  bounded text prints in full. Output formats and exit codes are unchanged.
+
+### Changed
+
+- `unlist --output json` lines grow from three fields to five, in the order `package`, `version`,
+  `status`, `failureType`, `failureMessage`. Both failure keys are the explicit JSON `null` when
+  the outcome carries no failure data, so every line keeps one fixed key set, and `failureMessage`
+  is never truncated. `show` lines keep their four-field shape.
+- `show --output json` bounds the deprecation `message` at 5000 characters by default and marks a
+  cut with `...`; `--verbose` prints it in full. Text mode prints no message text and is unchanged.
+
 ## 0.4.0 - 2026-11-23
 
 ### Added

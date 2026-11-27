@@ -56,6 +56,8 @@ internal sealed class MockNuGetV3Server : IDisposable
         new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, int> _deleteResponseStatuses =
         new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, string> _deleteResponseBodies =
+        new(StringComparer.OrdinalIgnoreCase);
     private readonly List<RecordedRequest> _requests = [];
     private readonly Lock _gate = new();
     private readonly string _baseUrl;
@@ -106,15 +108,26 @@ internal sealed class MockNuGetV3Server : IDisposable
 
     /// <summary>
     /// Sets the status code the delete endpoint answers for one version; every other version keeps
-    /// the default 204 (unlisted).
+    /// the default 204 (unlisted). An optional <paramref name="body"/> scripts the response body
+    /// the delete returns beside that status — the bearer a failure detail quotes verbatim.
     /// </summary>
-    public void SetDeleteResponseStatus(string version, int statusCode)
+    public void SetDeleteResponseStatus(string version, int statusCode, string? body = null)
     {
         NuGetVersion parsed = NuGetVersion.Parse(version);
+        string normalized = parsed.ToNormalizedString();
 
         lock (_gate)
         {
-            _deleteResponseStatuses[parsed.ToNormalizedString()] = statusCode;
+            _deleteResponseStatuses[normalized] = statusCode;
+
+            if (body is null)
+            {
+                _deleteResponseBodies.Remove(normalized);
+            }
+            else
+            {
+                _deleteResponseBodies[normalized] = body;
+            }
         }
     }
 
@@ -352,7 +365,10 @@ internal sealed class MockNuGetV3Server : IDisposable
                 statusCode = _deleteResponseStatuses.TryGetValue(version, out int configured)
                     ? configured
                     : (int)HttpStatusCode.NoContent;
-                return null;
+
+                return _deleteResponseBodies.TryGetValue(version, out string? scriptedBody)
+                    ? scriptedBody
+                    : null;
             }
 
             statusCode = (int)HttpStatusCode.NotFound;

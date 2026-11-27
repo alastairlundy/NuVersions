@@ -19,33 +19,25 @@
         <Description>Unlist NuGet package versions programmatically with ease.</Description>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageReleaseNotes>
-        ## Changes since 0.3.0
+## Changes since 0.4.0
 
 ### Added
-- `show` reports per-version deprecation. Text output gains a trailing `Deprecation=[reasons]` segment with the server's reason words verbatim, and `Deprecation=unspecified` when the server gives none. A deprecated version with a custom message prints one stderr hint to rerun with `--output json` for the full record.
-- `show --output json` lines gain a fourth `deprecation` field holding the full record, or JSON `null` when not deprecated. This changes the documented three-field `show` NDJSON schema; `unlist` is unchanged.
+- `unlist` reports why an attempt failed. Failed and rate-limited outcomes append a trailing `FailureType=` field to their text lines and gain `failureType` plus `failureMessage` keys in `--output json`, from a closed five-member vocabulary (`auth-failed`, `server-error`, `unavailable`, `rate-limited`, `unknown`), with one attributed stderr entry of verbatim detail per failure; the detail value is capped at 2000 characters by default.
+- `--verbose`, declared by both subcommands, lifts every truncation cap on either stream, so bounded text prints in full. Output formats and exit codes are unchanged.
 
 ### Changed
-- The `sdk` backend passes the API key to `dotnet nuget delete` via the child process's `NUGET_API_KEY` environment variable instead of the command line, so it no longer shows up in process listings.
-- `--unlist-all` treats stable `0.x` versions as pre-release, so packages published only as `0.x` are no longer skipped.
-- Dependency Updates: NuGet.Protocol 8.0.0, Microsoft.Extensions.* 11.0.0, System.Security.Cryptography.Pkcs 11.0.0, CliInvoke 3.2.0-beta.1, DotMake.CommandLine 3.8.0, Polyfill 12.0.0, TUnit 1.84.0, FsCheck 3.6.0, plus workflow action bumps.
-
-### Removed
-- `--include-zero-major`, now part of the pre-release definition itself.
-
-### Fixed
-- `show` observes Ctrl-C during the deprecation pass and exits `130`.
-- Feed-side read failures print a one-line diagnostic naming the package id and server URL instead of a stack trace.
+- `unlist --output json` lines grow from three fields to five (`package`, `version`, `status`, `failureType`, `failureMessage`). Both failure keys are explicit JSON `null` when the outcome carries no failure data, so every line keeps one fixed key set; `failureMessage` is never truncated. `show` lines keep their four-field shape.
+- `show --output json` bounds the deprecation `message` at 5000 characters by default and marks a cut with `...`; `--verbose` prints it in full. Text mode is unchanged.
         </PackageReleaseNotes>
         <TargetFramework>net10.0</TargetFramework>
         <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
         <EnableAotAnalyzer>true</EnableAotAnalyzer>
         <IsAotCompatible>false</IsAotCompatible>
         <IsTrimmable>false</IsTrimmable>
-        <Version>0.4.0</Version>
-        <PackageVersion>0.4.0</PackageVersion>
-        <AssemblyVersion>0.4.0.0</AssemblyVersion>
-        <FileVersion>0.4.0.0</FileVersion>
+        <Version>0.5.0</Version>
+        <PackageVersion>0.5.0</PackageVersion>
+        <AssemblyVersion>0.5.0.0</AssemblyVersion>
+        <FileVersion>0.5.0.0</FileVersion>
         <Nullable>enable</Nullable>
     </PropertyGroup>
 

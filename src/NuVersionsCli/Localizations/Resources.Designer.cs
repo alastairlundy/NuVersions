@@ -60,6 +60,15 @@ namespace NuVersionsCli.Localizations {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Failure detail for package '{0}' version {1}:.
+        /// </summary>
+        internal static string Diagnostics_Unlist_FailureDetail {
+            get {
+                return ResourceManager.GetString("Diagnostics.Unlist.FailureDetail", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Error: No valid version strings provided..
         /// </summary>
         internal static string Errors_Input_NoVersionStrings {
@@ -123,6 +132,15 @@ namespace NuVersionsCli.Localizations {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Unhandled {0} member: add its kebab-case spelling in {1}..
+        /// </summary>
+        internal static string Exceptions_FailureType_Unhandled {
+            get {
+                return ResourceManager.GetString("Exceptions.FailureType.Unhandled", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Invalid version string: {0}.
         /// </summary>
         internal static string Exceptions_Versions_InvalidVersionString {
@@ -159,7 +177,7 @@ namespace NuVersionsCli.Localizations {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to A deprecated version has a custom deprecation message; rerun with --output json for the full deprecation record..
+        ///   Looks up a localized string similar to A deprecated version has a custom deprecation message; rerun with --output json --verbose for the full deprecation record..
         /// </summary>
         internal static string Hints_Show_FullDeprecationJson {
             get {

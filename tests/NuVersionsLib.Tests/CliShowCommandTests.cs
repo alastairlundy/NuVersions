@@ -44,6 +44,9 @@ public class CliShowCommandTests
         "{\"reasons\":[\"other\"],\"message\":\"Use Demo.Package.Next instead.\"," +
         "\"alternatePackage\":{\"id\":\"Demo.Package.Next\",\"range\":\"[2.0.0, )\"}}";
 
+    /// <summary>The documented default cap for show's JSON deprecation message.</summary>
+    private const int StdoutMessageCap = 5000;
+
     private static string NewPackageId(string prefix) => $"{prefix}.{Guid.NewGuid():N}";
 
     [Test]
@@ -153,7 +156,7 @@ public class CliShowCommandTests
         // Exactly one hint line, on stderr alone, naming the JSON rerun.
         string[] errorLines = Lines(run.StdErr);
         await Assert.That(errorLines.Length).IsEqualTo(1);
-        await Assert.That(errorLines[0].Contains("--output json")).IsTrue();
+        await Assert.That(errorLines[0].Contains("--output json --verbose")).IsTrue();
         await Assert.That(run.StdOut.Contains("--output json")).IsFalse();
 
         // The text line gains no hint-flavoured Deprecation= variant, and the custom message
@@ -219,6 +222,57 @@ public class CliShowCommandTests
             await Assert.That(document.RootElement.ValueKind).IsEqualTo(JsonValueKind.Object);
             await Assert.That(fieldOrder).IsEqualTo("package,version,status,deprecation");
         }
+    }
+
+    [Test]
+    public async Task ShowJsonLongDeprecationMessage_IsCappedByDefaultAndLiftedByVerbose()
+    {
+        using MockNuGetV3Server server = MockNuGetV3Server.Start();
+        string packageId = NewPackageId("ShowJsonMessageCap");
+        server.AddPackage(packageId, ("1.0.0", true));
+        string message = new string('a', StdoutMessageCap) + "-tail-that-must-survive-only-in-verbose";
+        server.SetDeprecation(packageId, "1.0.0", new MockDeprecation(["other"], message, null, null));
+
+        CommandRun defaultRun = await CliIntegrationHarness.RunSubcommandAsync(
+            "show",
+            "--package-id", packageId,
+            "--server-url", server.ServiceIndexUrl,
+            "--output", "json");
+
+        await Assert.That(defaultRun.ExitCode).IsEqualTo(ExitCodeHelpers.ExitSuccess);
+        await Assert.That(defaultRun.StdErr).IsEmpty();
+        using (JsonDocument defaultDocument = JsonDocument.Parse(Lines(defaultRun.StdOut).Single()))
+        {
+            string rendered = defaultDocument.RootElement.GetProperty("deprecation")
+                .GetProperty("message").GetString() ?? string.Empty;
+            await Assert.That(rendered).IsEqualTo(message[..StdoutMessageCap] + "...");
+        }
+
+        CommandRun verboseRun = await CliIntegrationHarness.RunSubcommandAsync(
+            "show",
+            "--package-id", packageId,
+            "--server-url", server.ServiceIndexUrl,
+            "--output", "json",
+            "--verbose");
+
+        await Assert.That(verboseRun.ExitCode).IsEqualTo(ExitCodeHelpers.ExitSuccess);
+        await Assert.That(verboseRun.StdErr).IsEmpty();
+        using (JsonDocument verboseDocument = JsonDocument.Parse(Lines(verboseRun.StdOut).Single()))
+        {
+            string rendered = verboseDocument.RootElement.GetProperty("deprecation")
+                .GetProperty("message").GetString() ?? string.Empty;
+            await Assert.That(rendered).IsEqualTo(message);
+        }
+
+        CommandRun textRun = await CliIntegrationHarness.RunSubcommandAsync(
+            "show",
+            "--package-id", packageId,
+            "--server-url", server.ServiceIndexUrl);
+
+        await Assert.That(textRun.ExitCode).IsEqualTo(ExitCodeHelpers.ExitSuccess);
+        await Assert.That(textRun.StdOut)
+            .IsEqualTo($"Version=1.0.0 Status=listed Deprecation=other{Environment.NewLine}");
+        await Assert.That(textRun.StdErr).Contains("--output json --verbose");
     }
 
     [Test]
