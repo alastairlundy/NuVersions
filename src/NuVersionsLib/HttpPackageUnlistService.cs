@@ -121,6 +121,7 @@ public class HttpPackageUnlistService : IPackageUnlistService
         }
     }
 
+#pragma warning disable MA0051 // Deliberately one linear flow: classification belongs inline in this delegate, not in a helper.
     /// <summary>
     /// Unlists a single package version via the NuGet HTTP DELETE endpoint.
     /// </summary>
@@ -130,6 +131,20 @@ public class HttpPackageUnlistService : IPackageUnlistService
     /// <param name="apiKey">The API key required for authentication with the NuGet service.</param>
     /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
     /// <returns>The closed outcome of the unlist attempt for this version.</returns>
+    /// <remarks>
+    /// <para>
+    /// Failures are classified here, in place: 401/403 report <see cref="PackageVersionFailureType.AuthFailed"/>,
+    /// 5xx reports <see cref="PackageVersionFailureType.ServerError"/>, a caught transport fault reports
+    /// <see cref="PackageVersionFailureType.Unavailable"/>, and any other non-success reports
+    /// <see cref="PackageVersionFailureType.Unknown"/>. A 429 keeps its <see cref="PackageVersionStatus.RateLimited"/>
+    /// status and additionally carries <see cref="PackageVersionFailureType.RateLimited"/>.
+    /// </para>
+    /// <para>
+    /// Every Failed and RateLimited outcome carries a Detail composed raw and verbatim from the response's status
+    /// line (code plus reason phrase when present) and body text, untruncated at this boundary; any cut happens
+    /// only at render time.
+    /// </para>
+    /// </remarks>
     private async ValueTask<PackageVersionOutcome> UnlistVersionAsync(
         string nugetApiUrl, string packageId, NuGetVersion version,
         string apiKey, CancellationToken cancellationToken)
@@ -175,18 +190,44 @@ public class HttpPackageUnlistService : IPackageUnlistService
                 return new PackageVersionOutcome(packageId, version, PackageVersionStatus.AlreadyUnlisted);
             }
 
+            // Everything from here down closes as Failed or RateLimited, and both statuses must carry a
+            // Detail: the response's status line plus its raw body text, verbatim and uncut (no scanning,
+            // no redaction of the API key - truncation happens only at render time).
+            string body =
+                await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+
+            string statusLine = response.ReasonPhrase is { Length: > 0 } reasonPhrase
+                ? $"HTTP {(int)response.StatusCode} {reasonPhrase}"
+                : $"HTTP {(int)response.StatusCode}";
+
+            string detail = body.Length > 0
+                ? statusLine + Environment.NewLine + body
+                : statusLine;
+
             if ((int)response.StatusCode == 429)
             {
-                return new PackageVersionOutcome(packageId, version, PackageVersionStatus.RateLimited);
+                return new PackageVersionOutcome(packageId, version, PackageVersionStatus.RateLimited,
+                    PackageVersionFailureType.RateLimited, detail);
             }
 
-            return new PackageVersionOutcome(packageId, version, PackageVersionStatus.Failed);
+            PackageVersionFailureType failureType = (int)response.StatusCode switch
+            {
+                401 or 403 => PackageVersionFailureType.AuthFailed,
+                >= 500 and < 600 => PackageVersionFailureType.ServerError,
+                _ => PackageVersionFailureType.Unknown,
+            };
+
+            return new PackageVersionOutcome(packageId, version, PackageVersionStatus.Failed,
+                failureType, detail);
         }
         catch (Exception exception) when (UnlistRun.ConvertsToFailed(exception, cancellationToken))
         {
-            // Server-side faults become a Failed outcome; the caller-cancellation rule lives in
-            // UnlistRun.ConvertsToFailed.
-            return new PackageVersionOutcome(packageId, version, PackageVersionStatus.Failed);
+            // Server-side faults become a Failed outcome classified as Unavailable, carrying the raw
+            // exception message as its Detail (there is no response to quote); the caller-cancellation
+            // rule lives in UnlistRun.ConvertsToFailed.
+            return new PackageVersionOutcome(packageId, version, PackageVersionStatus.Failed,
+                PackageVersionFailureType.Unavailable, exception.Message);
         }
     }
+#pragma warning restore MA0051
 }
