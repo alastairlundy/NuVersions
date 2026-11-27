@@ -25,4 +25,19 @@ namespace NuVersionsLib.Models;
 /// <param name="PackageId">The identifier of the package the version belongs to, exactly as supplied to the run.</param>
 /// <param name="Version">The version the outcome describes, carried as its normalized string value in output.</param>
 /// <param name="Status">The closed outcome status for this version.</param>
-public sealed record PackageVersionOutcome(string PackageId, NuGetVersion Version, PackageVersionStatus Status);
+/// <param name="FailureType">The failure type carrying the reason for a failed attempt, or <see langword="null"/> for every status that carries no failure reason.</param>
+/// <param name="Detail">The verbatim failure detail for a failed attempt, or <see langword="null"/> for every status that carries no failure reason.</param>
+/// <remarks>
+/// <see cref="PackageVersionStatus.Failed"/> and <see cref="PackageVersionStatus.RateLimited"/> outcomes always
+/// carry both <paramref name="FailureType"/> and <paramref name="Detail"/>; every other status carries nulls for
+/// both. <paramref name="Detail"/> is raw verbatim content, uncut at this boundary - HTTP backends put the response
+/// status line plus body text there and SDK backends put the child process's combined standard output and error
+/// there. Truncation happens only at render time, never here. The new members default to null so existing two- and
+/// three-argument construction sites keep compiling unchanged.
+/// </remarks>
+public sealed record PackageVersionOutcome(
+    string PackageId,
+    NuGetVersion Version,
+    PackageVersionStatus Status,
+    PackageVersionFailureType? FailureType = null,
+    string? Detail = null);
