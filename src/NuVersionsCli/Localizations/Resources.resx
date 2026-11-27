@@ -57,4 +57,7 @@
     <data name="Hints.Show.FullDeprecationJson" xml:space="preserve">
         <value>A deprecated version has a custom deprecation message; rerun with --output json for the full deprecation record.</value>
     </data>
+    <data name="Diagnostics.Unlist.FailureDetail" xml:space="preserve">
+        <value>Failure detail for package '{0}' version {1}:</value>
+    </data>
 </root>

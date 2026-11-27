@@ -17,6 +17,7 @@
  */
 
 using System.ComponentModel;
+using System.Globalization;
 using Microsoft.Extensions.DependencyInjection;
 using NuGet.Versioning;
 using NuVersionsCli.Helpers;
@@ -123,6 +124,14 @@ public class UnlistCommand
     [DefaultValue(UnlistOptions.DefaultOutputMode)]
     public string OutputMode { get; set; } = UnlistOptions.DefaultOutputMode;
 
+    /// <summary>
+    /// Lifts every truncation cap on both streams: text the default mode bounds prints in full.
+    /// Output formats and exit codes are unchanged.
+    /// </summary>
+    [CliOption(Name = "--verbose", Required = false)]
+    [DefaultValue(false)]
+    public bool Verbose { get; set; } = false;
+
     public async Task<int> RunAsync()
     {
         UnlistOptions options = ResolveOptions();
@@ -150,7 +159,7 @@ public class UnlistCommand
 
             return options.DryRun
                 ? await RunDryRunAsync(options, cancellationSource.Token).ConfigureAwait(true)
-                : await RunUnlistAsync(options, unlistService, cancellationSource.Token).ConfigureAwait(true);
+                : await RunUnlistAsync(options, unlistService, Verbose, cancellationSource.Token).ConfigureAwait(true);
         }
         catch (OperationCanceledException)
         {
@@ -197,11 +206,12 @@ public class UnlistCommand
     }
 
     /// <summary>
-    /// Sends the unlist requests through the composing service, renders every outcome, and returns the
-    /// merged exit code.
+    /// Sends the unlist requests through the composing service, renders every outcome, writes one
+    /// attributed detail line to stderr per failed or rate-limited outcome, and returns the merged
+    /// exit code.
     /// </summary>
     private static async Task<int> RunUnlistAsync(UnlistOptions options, IPackageUnlistService unlistService,
-        CancellationToken cancellationToken)
+        bool verbose, CancellationToken cancellationToken)
     {
         if (string.IsNullOrEmpty(options.ApiKey))
             throw new ArgumentNullException(paramName: nameof(options));
@@ -232,8 +242,33 @@ public class UnlistCommand
         }
 
         await WriteResultsAsync(options, outcomes).ConfigureAwait(true);
+        await WriteFailureDetailsAsync(outcomes, verbose).ConfigureAwait(true);
 
         return exitCode;
+    }
+
+    /// <summary>
+    /// The stderr companion to the stdout rendering: one attributed line per failed or
+    /// rate-limited outcome — the localized prefix naming the package and version, then the
+    /// verbatim detail bounded at the stderr cap with the marker, unbounded under
+    /// <c>--verbose</c>. Only presentation lives here: the caller's exit code is untouched.
+    /// </summary>
+    private static async Task WriteFailureDetailsAsync(IReadOnlyList<PackageVersionOutcome> outcomes,
+        bool verbose)
+    {
+        foreach (PackageVersionOutcome outcome in outcomes)
+        {
+            if (outcome.Status is not (PackageVersionStatus.Failed or PackageVersionStatus.RateLimited))
+                continue;
+
+            // The outcome model guarantees those two statuses carry a Detail; the empty fallback
+            // still renders one attributed line if that invariant is ever broken.
+            string detail = TruncationHelpers.TruncateForStderr(outcome.Detail ?? string.Empty, verbose);
+            string prefix = string.Format(CultureInfo.InvariantCulture, Resources.Diagnostics_Unlist_FailureDetail,
+                outcome.PackageId, outcome.Version.ToNormalizedString());
+
+            await Console.Error.WriteLineAsync($"{prefix} {detail}").ConfigureAwait(true);
+        }
     }
 
     /// <summary>

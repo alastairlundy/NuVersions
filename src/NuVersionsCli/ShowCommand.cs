@@ -88,6 +88,14 @@ public class ShowCommand
     [DefaultValue(ShowOptions.DefaultOutputMode)]
     public string OutputMode { get; set; } = ShowOptions.DefaultOutputMode;
 
+    /// <summary>
+    /// Lifts every truncation cap on both streams: text the default mode bounds prints in full.
+    /// Output formats and exit codes are unchanged.
+    /// </summary>
+    [CliOption(Name = "--verbose", Required = false)]
+    [DefaultValue(false)]
+    public bool Verbose { get; set; } = false;
+
     public async Task<int> RunAsync()
     {
         ShowOptions options = ResolveOptions();
@@ -120,7 +128,7 @@ public class ShowCommand
             IDictionary<NuGetVersion, PackageDeprecationInfo?> deprecationByVersion =
                 await ReadDeprecationAsync(options, versions, cancellationSource.Token).ConfigureAwait(true);
 
-            await WriteVersionsAsync(options, versions, deprecationByVersion).ConfigureAwait(true);
+            await WriteVersionsAsync(options, versions, deprecationByVersion, Verbose).ConfigureAwait(true);
 
             return ExitCodeHelpers.ExitSuccess;
         }
@@ -166,7 +174,7 @@ public class ShowCommand
     /// </summary>
     private static async Task WriteVersionsAsync(ShowOptions options,
         IReadOnlyList<PackageVersionListingInfo> versions,
-        IDictionary<NuGetVersion, PackageDeprecationInfo?> deprecationByVersion)
+        IDictionary<NuGetVersion, PackageDeprecationInfo?> deprecationByVersion, bool verbose)
     {
         bool json = OutputModeHelpers.IsJson(options.OutputMode);
         bool customMessageSeen = false;
@@ -176,7 +184,7 @@ public class ShowCommand
             deprecationByVersion.TryGetValue(info.PackageVersion, out PackageDeprecationInfo? deprecation);
             customMessageSeen |= !string.IsNullOrEmpty(deprecation?.Message);
 
-            await Console.Out.WriteLineAsync(DescribeListing(options.PackageId, info, json, deprecation)).ConfigureAwait(true);
+            await Console.Out.WriteLineAsync(DescribeListing(options.PackageId, info, json, deprecation, verbose)).ConfigureAwait(true);
         }
 
         if (!json && customMessageSeen)
@@ -204,14 +212,19 @@ public class ShowCommand
     /// as NDJSON (fourth <c>deprecation</c> field, explicit <see langword="null"/> when absent)
     /// under <c>--output json</c>.
     /// </summary>
+    /// <remarks>
+    /// The JSON record's message is the stdout bearer: it is bounded at the stdout cap with the
+    /// marker unless <c>--verbose</c> is set. Text mode prints no message text and never changes.
+    /// </remarks>
     private static string DescribeListing(string packageId, PackageVersionListingInfo info, bool json,
-        PackageDeprecationInfo? deprecation)
+        PackageDeprecationInfo? deprecation, bool verbose)
     {
         string status = info.IsListed ? "listed" : "unlisted";
 
         if (json)
         {
-            return NdjsonHelpers.ToPackageVersionLine(packageId, info.PackageVersion, status, deprecation);
+            return NdjsonHelpers.ToPackageVersionLine(packageId, info.PackageVersion, status,
+                CapDeprecationMessage(deprecation, verbose));
         }
 
         string line = $"Version={info.PackageVersion.ToNormalizedString()} Status={status}";
@@ -223,6 +236,26 @@ public class ShowCommand
         }
 
         return $"{line} Deprecation={RenderReasons(deprecation)}";
+    }
+
+    /// <summary>
+    /// Bounds the served deprecation message inside the JSON deprecation record at the stdout cap,
+    /// appending the marker when it was cut, and returns the record untouched under
+    /// <c>--verbose</c>. A version with no message keeps its explicit JSON <see langword="null"/>.
+    /// </summary>
+    private static PackageDeprecationInfo? CapDeprecationMessage(PackageDeprecationInfo? deprecation,
+        bool verbose)
+    {
+        if (deprecation?.Message is null)
+        {
+            return deprecation;
+        }
+
+        string bounded = TruncationHelpers.TruncateForStdout(deprecation.Message, verbose);
+
+        return string.Equals(bounded, deprecation.Message, StringComparison.Ordinal)
+            ? deprecation
+            : deprecation with { Message = bounded };
     }
 
     /// <summary>

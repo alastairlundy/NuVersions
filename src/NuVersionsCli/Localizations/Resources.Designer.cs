@@ -60,6 +60,15 @@ namespace NuVersionsCli.Localizations {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Failure detail for package '{0}' version {1}:.
+        /// </summary>
+        internal static string Diagnostics_Unlist_FailureDetail {
+            get {
+                return ResourceManager.GetString("Diagnostics.Unlist.FailureDetail", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Error: No valid version strings provided..
         /// </summary>
         internal static string Errors_Input_NoVersionStrings {
